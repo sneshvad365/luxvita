@@ -178,6 +178,24 @@ object AggregateService:
   // Latest weight
   // ---------------------------------------------------------------------------
 
+  def getMedicalContext(userId: String): String =
+    Database.withConnection { conn =>
+      val st = conn.prepareStatement(
+        """SELECT title, content, created_at
+          |FROM medical_records
+          |WHERE user_id = ?::uuid
+          |ORDER BY created_at DESC
+          |LIMIT 5""".stripMargin
+      )
+      st.setString(1, userId)
+      val rs  = st.executeQuery()
+      val buf = scala.collection.mutable.ArrayBuffer[String]()
+      while rs.next() do
+        val date = rs.getString("created_at").take(10)
+        buf += s"[${date}] ${rs.getString("title")}:\n${rs.getString("content")}"
+      buf.mkString("\n\n---\n\n")
+    }
+
   def getLatestWeightKg(userId: String): Option[Double] =
     Database.withConnection { conn =>
       val st = conn.prepareStatement(

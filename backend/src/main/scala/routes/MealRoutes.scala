@@ -30,10 +30,12 @@ object MealRoutes extends BaseRoutes:
           val estimate    = ClaudeService.estimateMealMacros(description, photo, targets, todayMacros)
           val rawJson     = write(estimate)
 
+          val breakdownJson = write(estimate.breakdown)
+
           val (mealId, loggedAt) = Database.withConnection { conn =>
             val st = conn.prepareStatement(
-              """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate)
-                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+              """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate, breakdown)
+                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb)
                 |RETURNING id, logged_at""".stripMargin
             )
             st.setString(1, userId)
@@ -48,6 +50,7 @@ object MealRoutes extends BaseRoutes:
             st.setDouble(7, estimate.fatG)
             st.setDouble(8, estimate.fiberG)
             st.setString(9, rawJson)
+            st.setString(10, breakdownJson)
             val rs = st.executeQuery()
             rs.next()
             (rs.getString("id"), rs.getString("logged_at"))
@@ -159,7 +162,7 @@ object MealRoutes extends BaseRoutes:
           .getOrElse(java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString)
         val meals = Database.withConnection { conn =>
           val st = conn.prepareStatement(
-            """SELECT id, logged_at, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g
+            """SELECT id, logged_at, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, breakdown
               |FROM meals
               |WHERE user_id = ?::uuid
               |  AND logged_at >= ?::date
@@ -184,6 +187,8 @@ object MealRoutes extends BaseRoutes:
             val fiberOpt    = if rs.wasNull() then ujson.Null else ujson.Num(fiberVal)
             val descStr     = rs.getString("description")
             val descOpt     = if rs.wasNull() then ujson.Null else ujson.Str(descStr)
+            val breakdownStr = rs.getString("breakdown")
+            val breakdownVal = if rs.wasNull() then ujson.Arr() else ujson.read(breakdownStr)
             buf += ujson.Obj(
               "id"          -> rs.getString("id"),
               "loggedAt"    -> rs.getString("logged_at"),
@@ -194,6 +199,7 @@ object MealRoutes extends BaseRoutes:
               "carbsG"      -> carbsOpt,
               "fatG"        -> fatOpt,
               "fiberG"      -> fiberOpt,
+              "breakdown"   -> breakdownVal,
             )
           buf.toList
         }

@@ -14,13 +14,14 @@
       <q-tabs
         v-model="activeTab"
         dense
-        class="bg-white text-grey-7"
+        class="bg-white text-grey-7 nav-tabs"
         active-color="primary"
         indicator-color="primary"
       >
         <q-route-tab icon="today"         label="Today"   to="/today"   />
         <q-route-tab icon="add_circle"    label="Log"     to="/log"     />
         <q-route-tab icon="trending_up"   label="Trends"  to="/trends"  />
+        <q-route-tab icon="favorite"      label="Health"  to="/health"  />
         <q-route-tab icon="person"        label="Profile" to="/profile" />
       </q-tabs>
     </q-footer>
@@ -31,3 +32,14 @@
 import { ref } from 'vue'
 const activeTab = ref('today')
 </script>
+
+<style>
+.nav-tabs .q-tab__label {
+  font-size: 9px !important;
+  line-height: 1.2;
+}
+.nav-tabs .q-tab {
+  min-width: 0 !important;
+  padding: 0 4px !important;
+}
+</style>

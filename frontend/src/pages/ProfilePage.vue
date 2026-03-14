@@ -79,9 +79,9 @@ const saving       = ref(false)
 const saved        = ref(false)
 
 const goalOptions = [
-  { label: 'Fat loss',      value: 'fat_loss'     },
-  { label: 'Muscle gain',   value: 'muscle_gain'  },
-  { label: 'Maintenance',   value: 'maintenance'  },
+  { label: 'Fat loss',    value: 'fat_loss'    },
+  { label: 'Muscle gain', value: 'muscle_gain' },
+  { label: 'Maintenance', value: 'maintenance' },
 ]
 
 const bioPlaceholder = `Male, 33, 180cm, 83kg. Goal is to lose fat while keeping muscle.
@@ -103,12 +103,11 @@ const form = ref({
   goalWeightKg:   null as number | null,
 })
 
-// Populate form when profile loads
 watch(() => profileStore.profile, (p) => {
   if (!p) return
   form.value = {
-    bio:            p.bio            ?? '',
-    goal:           p.goal,
+    bio:            p.bio ?? '',
+    goal:           p.goal as 'fat_loss' | 'muscle_gain' | 'maintenance',
     targetKcal:     p.targetKcal,
     targetProteinG: p.targetProteinG,
     targetCarbsG:   p.targetCarbsG,

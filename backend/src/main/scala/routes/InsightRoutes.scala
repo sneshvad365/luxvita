@@ -13,70 +13,69 @@ object InsightRoutes extends BaseRoutes:
         val resolvedDate = date.filter(_.nonEmpty).getOrElse(todayStr)
         val isToday      = resolvedDate == todayStr
 
-        // Return cached insight if it exists
-        val cached = Database.withConnection { conn =>
-          val st = conn.prepareStatement(
-            "SELECT insight, type FROM daily_insights WHERE user_id = ?::uuid AND date = ?::date"
-          )
-          st.setString(1, userId)
-          st.setString(2, resolvedDate)
-          val rs = st.executeQuery()
-          if rs.next() then Some((rs.getString("insight"), rs.getString("type"))) else None
-        }
-
-        cached match
-          case Some((insightText, insightType)) =>
-            ok(ujson.Obj("insight" -> insightText, "type" -> insightType, "cached" -> true))
-
-          case None =>
-            // Only generate via Claude for today — past days without saved insight return empty
-            if !isToday then
+        if !isToday then
+          // Past days: return cached or empty
+          val cached = Database.withConnection { conn =>
+            val st = conn.prepareStatement(
+              "SELECT insight, type FROM daily_insights WHERE user_id = ?::uuid AND date = ?::date"
+            )
+            st.setString(1, userId)
+            st.setString(2, resolvedDate)
+            val rs = st.executeQuery()
+            if rs.next() then Some((rs.getString("insight"), rs.getString("type"))) else None
+          }
+          cached match
+            case Some((insightText, insightType)) =>
+              ok(ujson.Obj("insight" -> insightText, "type" -> insightType, "cached" -> true))
+            case None =>
               ok(ujson.Obj("insight" -> ujson.Null, "type" -> ujson.Null))
-            else
-              val profile     = AggregateService.getProfileOrDefault(userId)
-              val targets     = models.Macros(
-                kcal     = profile.targetKcal,
-                proteinG = profile.targetProteinG.toDouble,
-                carbsG   = profile.targetCarbsG.toDouble,
-                fatG     = profile.targetFatG.toDouble,
-                fiberG   = profile.targetFiberG.toDouble,
-              )
-              val todayMacros = AggregateService.getMacrosForDate(userId, resolvedDate)
-              val activityStr = AggregateService.getActivityStringForDate(userId, resolvedDate)
-              val weightKg    = AggregateService.getLatestWeightKg(userId)
-              val sevenDayAvg = AggregateService.getNDayAvgMacros(userId, 7)
-              val patterns    = AggregateService.patternNotes(userId, profile)
+        else
+          val profile        = AggregateService.getProfileOrDefault(userId)
+          val targets        = models.Macros(
+            kcal     = profile.targetKcal,
+            proteinG = profile.targetProteinG.toDouble,
+            carbsG   = profile.targetCarbsG.toDouble,
+            fatG     = profile.targetFatG.toDouble,
+            fiberG   = profile.targetFiberG.toDouble,
+          )
+          val todayMacros    = AggregateService.getMacrosForDate(userId, resolvedDate)
+          val activityStr    = AggregateService.getActivityStringForDate(userId, resolvedDate)
+          val weightKg       = AggregateService.getLatestWeightKg(userId)
+          val sevenDayAvg    = AggregateService.getNDayAvgMacros(userId, 7)
+          val patterns       = AggregateService.patternNotes(userId, profile)
+          val medicalContext = AggregateService.getMedicalContext(userId)
 
-              val insight = ClaudeService.dailyInsight(
-                profile     = profile,
-                targets     = targets,
-                today       = todayMacros,
-                activityStr = activityStr,
-                weightKg    = weightKg,
-                sevenDayAvg = sevenDayAvg,
-                patterns    = patterns,
-              )
+          val insight = ClaudeService.dailyInsight(
+            profile        = profile,
+            targets        = targets,
+            today          = todayMacros,
+            activityStr    = activityStr,
+            weightKg       = weightKg,
+            sevenDayAvg    = sevenDayAvg,
+            patterns       = patterns,
+            medicalContext = medicalContext,
+          )
 
-              // Persist
-              Database.withConnection { conn =>
-                val st = conn.prepareStatement(
-                  """INSERT INTO daily_insights (user_id, date, insight, type)
-                    |VALUES (?::uuid, ?::date, ?, ?)
-                    |ON CONFLICT (user_id, date) DO UPDATE SET insight = EXCLUDED.insight, type = EXCLUDED.type""".stripMargin
-                )
-                st.setString(1, userId)
-                st.setString(2, resolvedDate)
-                st.setString(3, insight.insight)
-                st.setString(4, insight.`type`)
-                st.executeUpdate()
-              }
+          // Persist (upsert — always overwrite with latest)
+          Database.withConnection { conn =>
+            val st = conn.prepareStatement(
+              """INSERT INTO daily_insights (user_id, date, insight, type)
+                |VALUES (?::uuid, ?::date, ?, ?)
+                |ON CONFLICT (user_id, date) DO UPDATE SET insight = EXCLUDED.insight, type = EXCLUDED.type""".stripMargin
+            )
+            st.setString(1, userId)
+            st.setString(2, resolvedDate)
+            st.setString(3, insight.insight)
+            st.setString(4, insight.`type`)
+            st.executeUpdate()
+          }
 
-              // Auto-trigger weekly insights on Sundays
-              val dayOfWeek = java.time.LocalDate.parse(resolvedDate).getDayOfWeek
-              if dayOfWeek == java.time.DayOfWeek.SUNDAY then
-                generateAndSaveWeeklyInsights(userId, resolvedDate)
+          // Auto-trigger weekly insights on Sundays
+          val dayOfWeek = java.time.LocalDate.parse(resolvedDate).getDayOfWeek
+          if dayOfWeek == java.time.DayOfWeek.SUNDAY then
+            generateAndSaveWeeklyInsights(userId, resolvedDate)
 
-              ok(ujson.Obj("insight" -> insight.insight, "type" -> insight.`type`, "cached" -> false))
+          ok(ujson.Obj("insight" -> insight.insight, "type" -> insight.`type`, "cached" -> false))
 
       catch
         case e: Exception =>
@@ -138,7 +137,7 @@ object InsightRoutes extends BaseRoutes:
         fatG     = profile.targetFatG.toDouble,
         fiberG   = profile.targetFiberG.toDouble,
       )
-      val thirtyDayAvg = AggregateService.getNDayAvgMacros(userId, 30)
+      val thirtyDayAvg   = AggregateService.getNDayAvgMacros(userId, 30)
       val (kcalC, protC, fibC) = AggregateService.consistencyScores(userId, profile)
       val consistencyStr = s"kcal: ${f"${kcalC * 100}%.0f"}%, protein: ${f"${protC * 100}%.0f"}%, fiber: ${f"${fibC * 100}%.0f"}%"
       val patterns       = AggregateService.patternNotes(userId, profile)
@@ -148,14 +147,16 @@ object InsightRoutes extends BaseRoutes:
         case Some(w) => profile.goalWeightKg match
           case None       => s"Current weight: ${w}kg. No goal weight set."
           case Some(goal) => s"Current weight: ${w}kg. Goal: ${goal}kg."
+      val medicalContext = AggregateService.getMedicalContext(userId)
 
       val insights = ClaudeService.weeklyInsights(
-        profile      = profile,
-        targets      = targets,
-        thirtyDayAvg = thirtyDayAvg,
-        weightTrend  = weightTrendStr,
-        consistency  = consistencyStr,
-        patterns     = patterns,
+        profile        = profile,
+        targets        = targets,
+        thirtyDayAvg   = thirtyDayAvg,
+        weightTrend    = weightTrendStr,
+        consistency    = consistencyStr,
+        patterns       = patterns,
+        medicalContext = medicalContext,
       )
 
       Database.withConnection { conn =>

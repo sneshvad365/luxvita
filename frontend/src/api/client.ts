@@ -47,6 +47,15 @@ export interface MacroEstimate {
   waterMl:     number | null
 }
 
+export interface BreakdownItem {
+  item:     string
+  kcal:     number
+  proteinG: number
+  carbsG:   number
+  fatG:     number
+  fiberG:   number
+}
+
 export interface Meal {
   id:          string
   userId:      string
@@ -58,6 +67,7 @@ export interface Meal {
   carbsG:      number | null
   fatG:        number | null
   fiberG:      number | null
+  breakdown:   BreakdownItem[]
 }
 
 export interface Macros {
@@ -121,6 +131,14 @@ export interface UserProfile {
 export interface Insight {
   insight: string
   type:    'protein' | 'timing' | 'fiber' | 'hydration' | 'recovery' | 'weight'
+}
+
+export interface MedicalRecord {
+  id:         string
+  title:      string
+  sourceType: 'text' | 'pdf'
+  createdAt:  string
+  content?:   string
 }
 
 export interface TrendsSummary {

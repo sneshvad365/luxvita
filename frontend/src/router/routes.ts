@@ -10,6 +10,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'today',   component: () => import('pages/TodayPage.vue') },
       { path: 'log',     component: () => import('pages/LogPage.vue') },
       { path: 'trends',  component: () => import('pages/TrendsPage.vue') },
+      { path: 'health',  component: () => import('pages/HealthPage.vue') },
       { path: 'profile', component: () => import('pages/ProfilePage.vue') },
     ],
   },

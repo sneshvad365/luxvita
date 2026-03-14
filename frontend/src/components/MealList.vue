@@ -12,7 +12,7 @@
       <q-list separator>
         <div v-for="meal in meals" :key="meal.id">
           <!-- Display mode -->
-          <q-item v-if="editingId !== meal.id" dense>
+          <q-item v-if="editingId !== meal.id" dense clickable @click="breakdownMeal = meal">
             <q-item-section>
               <q-item-label class="text-body2">
                 {{ meal.description ?? (meal.hasPhoto ? 'Photo meal' : 'Unnamed meal') }}
@@ -62,6 +62,51 @@
       </q-list>
     </q-card-section>
   </q-card>
+
+  <!-- Breakdown dialog -->
+  <q-dialog :model-value="!!breakdownMeal" @update:model-value="v => { if (!v) breakdownMeal = null }">
+    <q-card style="min-width:300px;max-width:420px">
+      <q-card-section class="q-pb-none">
+        <div class="text-subtitle2 text-weight-bold">
+          {{ breakdownMeal?.description ?? (breakdownMeal?.hasPhoto ? 'Photo meal' : 'Meal') }}
+        </div>
+        <div class="text-caption text-grey-6">{{ breakdownMeal ? formatTime(breakdownMeal.loggedAt) : '' }}</div>
+      </q-card-section>
+
+      <q-card-section v-if="breakdownMeal?.breakdown?.length">
+        <q-list dense separator>
+          <q-item v-for="item in breakdownMeal.breakdown" :key="item.item" class="q-px-none">
+            <q-item-section>
+              <q-item-label class="text-body2">{{ item.item }}</q-item-label>
+              <q-item-label caption class="text-grey-6">
+                P{{ item.proteinG.toFixed(0) }}
+                C{{ item.carbsG.toFixed(0) }}
+                F{{ item.fatG.toFixed(0) }}
+                Fi{{ item.fiberG.toFixed(0) }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <span class="text-weight-medium text-primary">{{ item.kcal }} kcal</span>
+            </q-item-section>
+          </q-item>
+        </q-list>
+
+        <q-separator class="q-my-sm" />
+        <div class="row justify-between text-body2 text-weight-bold">
+          <span>Total</span>
+          <span class="text-primary">{{ breakdownMeal?.kcal ?? '—' }} kcal</span>
+        </div>
+      </q-card-section>
+
+      <q-card-section v-else class="text-grey-5 text-center">
+        No breakdown available for this meal
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="Close" color="grey-6" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
@@ -72,9 +117,10 @@ import type { Meal } from 'src/api/client'
 defineProps<{ meals: Meal[]; loading: boolean; readonly?: boolean }>()
 const emit = defineEmits<{ refresh: [] }>()
 
-const editingId = ref<string | null>(null)
-const saving    = ref(false)
-const form      = reactive({ description: '', kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 })
+const editingId       = ref<string | null>(null)
+const saving          = ref(false)
+const form            = reactive({ description: '', kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 })
+const breakdownMeal   = ref<Meal | null>(null)
 
 function startEdit(meal: Meal) {
   editingId.value    = meal.id

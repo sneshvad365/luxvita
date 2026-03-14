@@ -16,6 +16,15 @@ case class Meal(
   rawEstimate : Option[ujson.Value] = None,
 ) derives ReadWriter
 
+case class BreakdownItem(
+  item    : String,
+  kcal    : Int,
+  proteinG: Double,
+  carbsG  : Double,
+  fatG    : Double,
+  fiberG  : Double,
+) derives ReadWriter
+
 case class MacroEstimate(
   kcal       : Int,
   proteinG   : Double,
@@ -23,7 +32,8 @@ case class MacroEstimate(
   fatG       : Double,
   fiberG     : Double,
   description: String,
-  waterMl    : Option[Int] = None,  // liquid content (milk, soup, juice, etc.)
+  waterMl    : Option[Int]           = None,
+  breakdown  : List[BreakdownItem]   = Nil,
 ) derives ReadWriter
 
 case class TodayTotals(

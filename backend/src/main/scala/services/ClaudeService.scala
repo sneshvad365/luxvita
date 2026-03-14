@@ -40,27 +40,85 @@ object ClaudeService:
     parseActivityJson(responseText)
 
   def dailyInsight(
-    profile    : UserProfile,
-    targets    : Macros,
-    today      : Macros,
-    activityStr: String,
-    weightKg   : Option[Double],
-    sevenDayAvg: Macros,
-    patterns   : String,
+    profile       : UserProfile,
+    targets       : Macros,
+    today         : Macros,
+    activityStr   : String,
+    weightKg      : Option[Double],
+    sevenDayAvg   : Macros,
+    patterns      : String,
+    medicalContext: String = "",
   ): Insight =
-    val prompt = buildDailyInsightPrompt(profile, targets, today, activityStr, weightKg, sevenDayAvg, patterns)
+    val prompt = buildDailyInsightPrompt(profile, targets, today, activityStr, weightKg, sevenDayAvg, patterns, medicalContext)
     val responseText = callClaude(systemMsg = insightSystem, content = ujsonTextContent(prompt))
     parseInsight(responseText)
 
+  /** Returns (extractedContent, detectedDocumentDate) where date is ISO YYYY-MM-DD or None */
+  def extractMedicalText(title: String, pdfBase64: String): (String, Option[String]) =
+    val prompt = s"""This is a medical document titled "$title".
+
+      |1. Identify the document date (test date, collection date, report date, or visit date — whichever is most relevant). Format as YYYY-MM-DD.
+      |2. Extract all clinically relevant information as clear, structured plain text.
+      |   Include: test results and reference ranges, diagnoses, medications, measurements, dates, doctor notes, recommendations.
+      |   Omit: administrative info, patient address, billing codes.
+      |   Format as readable paragraphs with clear section headings.
+
+      |Return ONLY valid JSON:
+      |{ "document_date": "YYYY-MM-DD"|null, "content": "full extracted text..." }""".stripMargin
+    val content = ujson.Arr(
+      ujson.Obj(
+        "type"   -> "document",
+        "source" -> ujson.Obj(
+          "type"       -> "base64",
+          "media_type" -> "application/pdf",
+          "data"       -> pdfBase64,
+        ),
+      ),
+      ujson.Obj("type" -> "text", "text" -> prompt),
+    )
+    val responseText = callClaude(
+      systemMsg = "You are a medical data extractor. Return ONLY valid JSON.",
+      content   = content,
+    )
+    val json        = ujson.read(stripMarkdown(responseText))
+    val extracted   = json("content").str
+    val dateOpt     = json.obj.get("document_date").flatMap(v => if v.isNull then None else Some(v.str))
+    (extracted, dateOpt)
+
+  def medicalInsight(medicalContext: String, profile: UserProfile): String =
+    val profileStr = profile.bio.map(b => s"User profile: \"$b\"\n\n").getOrElse("")
+    val prompt =
+      s"""${profileStr}Medical records (most recent first):
+         |$medicalContext
+         |
+         |Provide a concise health summary with 2–3 key observations or action points based on these records.
+         |Be specific and reference the actual data. Always recommend consulting a healthcare provider for medical decisions.""".stripMargin
+    callClaude(
+      systemMsg = "You are a personal health advisor reviewing medical records. Be specific and actionable. Always recommend consulting a healthcare provider for medical decisions.",
+      content   = ujsonTextContent(prompt),
+    )
+
+  def medicalChat(medicalContext: String, profile: UserProfile, messages: List[(String, String)]): String =
+    val sysMsg =
+      s"""You are a personal health advisor. Answer questions about the user's medical records below.
+         |${profile.bio.map(b => s"\nUser profile: \"$b\"").getOrElse("")}
+         |
+         |Medical records (most recent first):
+         |$medicalContext
+         |
+         |Be concise and informative. Always recommend consulting a healthcare provider for medical decisions.""".stripMargin
+    callClaudeMultiTurn(systemMsg = sysMsg, messages = messages)
+
   def weeklyInsights(
-    profile      : UserProfile,
-    targets      : Macros,
-    thirtyDayAvg : Macros,
-    weightTrend  : String,
-    consistency  : String,
-    patterns     : String,
+    profile       : UserProfile,
+    targets       : Macros,
+    thirtyDayAvg  : Macros,
+    weightTrend   : String,
+    consistency   : String,
+    patterns      : String,
+    medicalContext: String = "",
   ): List[Insight] =
-    val prompt = buildWeeklyInsightPrompt(profile, targets, thirtyDayAvg, weightTrend, consistency, patterns)
+    val prompt = buildWeeklyInsightPrompt(profile, targets, thirtyDayAvg, weightTrend, consistency, patterns, medicalContext)
     val responseText = callClaude(systemMsg = insightSystem, content = ujsonTextContent(prompt))
     parseInsightArray(responseText)
 
@@ -83,8 +141,14 @@ object ClaudeService:
        |Already logged today: ${today.kcal} kcal, ${today.proteinG}g protein, ${today.carbsG}g carbs, ${today.fatG}g fat, ${today.fiberG}g fiber
        |${description.map(d => s"New meal: \"$d\"").getOrElse("Meal provided as photo only — estimate from the image.")}
        |
-       |Return: { "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float, "description": string, "water_ml": int|null }
-       |water_ml: total liquid content in ml if the meal contains significant liquid (milk, soup, broth, smoothie, juice, coffee, tea, etc.). null for solid food with no notable liquid.
+       |Return: {
+       |  "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float,
+       |  "description": string,
+       |  "water_ml": int|null,
+       |  "breakdown": [{ "item": string, "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float }, ...]
+       |}
+       |breakdown: one entry per distinct food item in the meal. Totals should sum to the top-level values.
+       |water_ml: total liquid content in ml if significant liquid present (milk, soup, juice, etc.). null for solid food.
        |""".stripMargin
 
   private def buildMessageContent(
@@ -109,15 +173,17 @@ object ClaudeService:
         )
 
   private def buildDailyInsightPrompt(
-    profile    : UserProfile,
-    targets    : Macros,
-    today      : Macros,
-    activityStr: String,
-    weightKg   : Option[Double],
-    sevenDayAvg: Macros,
-    patterns   : String,
+    profile       : UserProfile,
+    targets       : Macros,
+    today         : Macros,
+    activityStr   : String,
+    weightKg      : Option[Double],
+    sevenDayAvg   : Macros,
+    patterns      : String,
+    medicalContext: String = "",
   ): String =
     s"""${profile.bio.map(b => s"Profile: \"$b\"").getOrElse("")}
+       |${if medicalContext.nonEmpty then s"Medical records (most recent first):\n$medicalContext\n" else ""}
        |Targets: { kcal: ${targets.kcal}, protein: ${targets.proteinG}g, carbs: ${targets.carbsG}g, fat: ${targets.fatG}g, fiber: ${targets.fiberG}g }
        |Today: { kcal: ${today.kcal}, protein: ${today.proteinG}g, carbs: ${today.carbsG}g, fat: ${today.fatG}g, fiber: ${today.fiberG}g }
        |Activity: "$activityStr"
@@ -129,14 +195,16 @@ object ClaudeService:
        |""".stripMargin
 
   private def buildWeeklyInsightPrompt(
-    profile      : UserProfile,
-    targets      : Macros,
-    thirtyDayAvg : Macros,
-    weightTrend  : String,
-    consistency  : String,
-    patterns     : String,
+    profile       : UserProfile,
+    targets       : Macros,
+    thirtyDayAvg  : Macros,
+    weightTrend   : String,
+    consistency   : String,
+    patterns      : String,
+    medicalContext: String = "",
   ): String =
     s"""${profile.bio.map(b => s"Profile: \"$b\"").getOrElse("")}
+       |${if medicalContext.nonEmpty then s"Medical records (most recent first):\n$medicalContext\n" else ""}
        |Targets: { kcal: ${targets.kcal}, protein: ${targets.proteinG}g, carbs: ${targets.carbsG}g, fat: ${targets.fatG}g, fiber: ${targets.fiberG}g }
        |30-day averages: { kcal: ${thirtyDayAvg.kcal}, protein: ${thirtyDayAvg.proteinG}g, carbs: ${thirtyDayAvg.carbsG}g, fat: ${thirtyDayAvg.fatG}g, fiber: ${thirtyDayAvg.fiberG}g }
        |Weight trend: $weightTrend
@@ -180,6 +248,29 @@ object ClaudeService:
     val json = ujson.read(response.body())
     json("content")(0)("text").str
 
+  private def callClaudeMultiTurn(systemMsg: String, messages: List[(String, String)]): String =
+    val body = ujson.Obj(
+      "model"      -> model,
+      "max_tokens" -> 1024,
+      "system"     -> systemMsg,
+      "messages"   -> ujson.Arr(messages.map { case (role, content) =>
+        ujson.Obj("role" -> role, "content" -> content)
+      }*),
+    )
+    val request = jhttp.HttpRequest.newBuilder()
+      .uri(URI.create(apiUrl))
+      .header("Content-Type",      "application/json")
+      .header("x-api-key",         apiKey)
+      .header("anthropic-version", "2023-06-01")
+      .POST(BodyPublishers.ofString(ujson.write(body)))
+      .timeout(Duration.ofSeconds(30))
+      .build()
+    val response = httpClient.send(request, jhttp.HttpResponse.BodyHandlers.ofString())
+    if response.statusCode() != 200 then
+      throw RuntimeException(s"Claude API error ${response.statusCode()}")
+    val json = ujson.read(response.body())
+    json("content")(0)("text").str
+
   private def stripMarkdown(text: String): String =
     val t = text.trim
     if t.startsWith("```") then
@@ -188,6 +279,16 @@ object ClaudeService:
 
   private def parseMacroEstimate(text: String): MacroEstimate =
     val json = ujson.read(stripMarkdown(text))
+    val breakdown = json.obj.get("breakdown").map(_.arr.map { item =>
+      models.BreakdownItem(
+        item     = item("item").str,
+        kcal     = item("kcal").num.toInt,
+        proteinG = item("protein_g").num,
+        carbsG   = item("carbs_g").num,
+        fatG     = item("fat_g").num,
+        fiberG   = item("fiber_g").num,
+      )
+    }.toList).getOrElse(Nil)
     MacroEstimate(
       kcal        = json("kcal").num.toInt,
       proteinG    = json("protein_g").num,
@@ -196,6 +297,7 @@ object ClaudeService:
       fiberG      = json("fiber_g").num,
       description = json("description").str,
       waterMl     = json.obj.get("water_ml").flatMap(v => if v.isNull then None else Some(v.num.toInt)),
+      breakdown   = breakdown,
     )
 
   private def parseActivityJson(text: String): ParsedActivity =
