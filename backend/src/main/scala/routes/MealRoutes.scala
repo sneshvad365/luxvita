@@ -88,6 +88,73 @@ object MealRoutes extends BaseRoutes:
           err("SERVER_ERROR", e.getMessage, 500)
     }
 
+  @cask.post("/api/meals/copy")
+  def copyMeal(request: cask.Request): cask.Response[String] =
+    withAuth(request) { userId =>
+      try
+        val body   = ujson.read(request.text())
+        val mealId = body("mealId").str
+
+        val source = Database.withConnection { conn =>
+          val st = conn.prepareStatement(
+            """SELECT description, kcal, protein_g, carbs_g, fat_g, fiber_g, breakdown
+              |FROM meals WHERE id = ?::uuid AND user_id = ?::uuid""".stripMargin
+          )
+          st.setString(1, mealId)
+          st.setString(2, userId)
+          val rs = st.executeQuery()
+          if rs.next() then
+            val desc      = Option(rs.getString("description"))
+            val kcal      = rs.getInt("kcal")
+            val proteinG  = rs.getDouble("protein_g")
+            val carbsG    = rs.getDouble("carbs_g")
+            val fatG      = rs.getDouble("fat_g")
+            val fiberG    = rs.getDouble("fiber_g")
+            val breakdown = Option(rs.getString("breakdown"))
+            Some((desc, kcal, proteinG, carbsG, fatG, fiberG, breakdown))
+          else None
+        }
+
+        source match
+          case None => err("NOT_FOUND", "Meal not found", 404)
+          case Some((desc, kcal, proteinG, carbsG, fatG, fiberG, breakdown)) =>
+            Database.withConnection { conn =>
+              val st = conn.prepareStatement(
+                """INSERT INTO meals (user_id, description, kcal, protein_g, carbs_g, fat_g, fiber_g, breakdown)
+                  |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                  |RETURNING id""".stripMargin
+              )
+              st.setString(1, userId)
+              desc match
+                case Some(d) => st.setString(2, d)
+                case None    => st.setNull(2, java.sql.Types.VARCHAR)
+              st.setInt(3, kcal)
+              st.setDouble(4, proteinG)
+              st.setDouble(5, carbsG)
+              st.setDouble(6, fatG)
+              st.setDouble(7, fiberG)
+              breakdown match
+                case Some(b) => st.setString(8, b)
+                case None    => st.setNull(8, java.sql.Types.VARCHAR)
+              st.executeQuery().next()
+            }
+            val breakdownJson = breakdown.map(b => ujson.read(b)).getOrElse(ujson.Arr())
+            ok(ujson.Obj(
+              "estimate" -> ujson.Obj(
+                "kcal"        -> kcal,
+                "proteinG"    -> proteinG,
+                "carbsG"      -> carbsG,
+                "fatG"        -> fatG,
+                "fiberG"      -> fiberG,
+                "description" -> desc.getOrElse("Copied meal"),
+                "waterMl"     -> ujson.Null,
+                "breakdown"   -> breakdownJson,
+              )
+            ), status = 201)
+      catch
+        case e: Exception => err("SERVER_ERROR", e.getMessage, 500)
+    }
+
   @cask.put("/api/meals/:id")
   def updateMeal(id: String, request: cask.Request): cask.Response[String] =
     withAuth(request) { userId =>

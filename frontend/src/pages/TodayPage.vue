@@ -103,7 +103,7 @@
       <MacroChips :totals="today.totals" :profile="profile.profile" />
 
       <!-- Meal list -->
-      <MealList :meals="today.meals" :loading="today.loading" :readonly="!isToday" @refresh="today.fetchToday()" />
+      <MealList :meals="today.meals" :loading="today.loading" :readonly="!isToday" @refresh="today.fetchToday()" @copy="copyMeal" />
 
       <!-- Activity list -->
       <ActivityList :activities="today.activities" :readonly="!isToday" @refresh="today.fetchToday()" />
@@ -112,10 +112,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref, watch } from 'vue'
+import { onMounted, computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import api from 'src/api/client'
 import { useTodayStore }   from 'src/stores/today'
 import { useProfileStore } from 'src/stores/profile'
+import { useLogStore }     from 'src/stores/log'
 import CalorieCard  from 'src/components/CalorieCard.vue'
 import MacroChips   from 'src/components/MacroChips.vue'
 import MealList     from 'src/components/MealList.vue'
@@ -126,8 +128,10 @@ const chatMessages = ref<{ role: 'user' | 'assistant'; content: string }[]>([])
 const chatInput    = ref('')
 const chatLoading  = ref(false)
 
+const router  = useRouter()
 const today   = useTodayStore()
 const profile = useProfileStore()
+const log     = useLogStore()
 
 const todayStr  = new Date().toISOString().slice(0, 10)
 const isToday   = computed(() => today.selectedDate === todayStr)
@@ -139,15 +143,9 @@ const dateLabel = computed(() => {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 })
 
-// When stored insight loads (e.g. cached from store), seed the chat
-watch(() => today.insight, (insight) => {
-  if (insight && chatMessages.value.length === 0) {
-    chatMessages.value = [{ role: 'assistant', content: insight.insight }]
-  }
-}, { immediate: true })
-
 async function fetchInsightAndChat() {
   chatMessages.value = []
+  chatInput.value    = ''
   await today.fetchInsight()
   if (today.insight) {
     chatMessages.value = [{ role: 'assistant', content: today.insight.insight }]
@@ -196,7 +194,16 @@ onMounted(async () => {
     today.fetchToday(),
     profile.fetch(),
   ])
+  // Seed chat if insight was already loaded (e.g. navigating back to Today)
+  if (today.insight && chatMessages.value.length === 0) {
+    chatMessages.value = [{ role: 'assistant', content: today.insight.insight }]
+  }
 })
+
+async function copyMeal(mealId: string) {
+  await log.copyMeal(mealId)
+  await router.push('/log')
+}
 
 async function deleteWater(id: string) {
   await api.delete(`/api/water/${id}`)

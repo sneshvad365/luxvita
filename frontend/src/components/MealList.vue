@@ -27,10 +27,13 @@
                 F{{ (meal.fatG     ?? 0).toFixed(0) }}
               </div>
             </q-item-section>
-            <q-item-section v-if="!readonly" side>
+            <q-item-section side>
               <div class="column">
-                <q-btn flat round dense icon="edit"   size="sm" color="grey-6" @click="startEdit(meal)" />
-                <q-btn flat round dense icon="delete" size="sm" color="red-4"  @click="remove(meal.id)" />
+                <q-btn flat round dense icon="content_copy" size="sm" color="grey-6" @click.stop="emit('copy', meal.id)" />
+                <template v-if="!readonly">
+                  <q-btn flat round dense icon="edit"   size="sm" color="grey-6" @click.stop="startEdit(meal)" />
+                  <q-btn flat round dense icon="delete" size="sm" color="red-4"  @click.stop="remove(meal.id)" />
+                </template>
               </div>
             </q-item-section>
           </q-item>
@@ -115,7 +118,7 @@ import api from 'src/api/client'
 import type { Meal } from 'src/api/client'
 
 defineProps<{ meals: Meal[]; loading: boolean; readonly?: boolean }>()
-const emit = defineEmits<{ refresh: [] }>()
+const emit = defineEmits<{ refresh: []; copy: [mealId: string] }>()
 
 const editingId       = ref<string | null>(null)
 const saving          = ref(false)

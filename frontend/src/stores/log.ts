@@ -39,6 +39,22 @@ export const useLogStore = defineStore('log', {
       return data
     },
 
+    async copyMeal(mealId: string) {
+      this.submitting = true
+      this.error      = null
+      try {
+        const { data } = await api.post('/api/meals/copy', { mealId })
+        this.pendingEstimate = data.estimate as MacroEstimate
+        await useTodayStore().fetchToday()
+      } catch (e: unknown) {
+        this.error = (e as { response?: { data?: { message?: string } } })
+          ?.response?.data?.message ?? 'Failed to copy meal'
+        throw e
+      } finally {
+        this.submitting = false
+      }
+    },
+
     clearEstimate() {
       this.pendingEstimate = null
     },
