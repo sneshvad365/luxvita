@@ -44,6 +44,7 @@ export interface MacroEstimate {
   fatG:        number
   fiberG:      number
   description: string
+  waterMl:     number | null
 }
 
 export interface Meal {
@@ -84,7 +85,7 @@ export interface ParsedActivity {
 export interface ActivityLogResponse {
   id:       string
   entry:    string
-  parsed:   ParsedActivity
+  parsed:   ParsedActivity | null
   loggedAt: string
 }
 

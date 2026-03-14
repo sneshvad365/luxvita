@@ -15,7 +15,7 @@ object WeightRoutes extends BaseRoutes:
         val (entryId, loggedAt) = Database.withConnection { conn =>
           val st = conn.prepareStatement(
             """INSERT INTO weight_logs (user_id, weight_kg)
-              |VALUES (?, ?)
+              |VALUES (?::uuid, ?)
               |RETURNING id, logged_at""".stripMargin
           )
           st.setString(1, userId)
@@ -55,7 +55,7 @@ object WeightRoutes extends BaseRoutes:
               |           ORDER BY logged_at ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
               |         )::float8 AS rolling_7day
               |  FROM weight_logs
-              |  WHERE user_id = ?
+              |  WHERE user_id = ?::uuid
               |)
               |SELECT * FROM ordered ORDER BY logged_at DESC LIMIT 90""".stripMargin
           )
@@ -86,8 +86,8 @@ object WeightRoutes extends BaseRoutes:
             Database.withConnection { conn =>
               val st = conn.prepareStatement(
                 """SELECT EXTRACT(EPOCH FROM (
-                  |  (SELECT logged_at FROM weight_logs WHERE id = ?)
-                  |  - (SELECT logged_at FROM weight_logs WHERE id = ?)
+                  |  (SELECT logged_at FROM weight_logs WHERE id = ?::uuid)
+                  |  - (SELECT logged_at FROM weight_logs WHERE id = ?::uuid)
                   |)) AS diff_seconds""".stripMargin
               )
               st.setString(1, newest.id)

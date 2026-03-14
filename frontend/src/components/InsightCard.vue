@@ -3,6 +3,7 @@
     <q-card-section class="row items-start q-gutter-sm">
       <q-icon :name="icon" :color="`${color}-8`" size="sm" class="q-mt-xs" />
       <div class="col text-body2" :class="`text-${color}-9`">{{ insight.insight }}</div>
+      <q-btn flat round dense icon="refresh" :color="`${color}-8`" size="sm" @click="emit('refresh')" />
     </q-card-section>
   </q-card>
 </template>
@@ -12,6 +13,7 @@ import { computed } from 'vue'
 import type { Insight } from 'src/api/client'
 
 const props = defineProps<{ insight: Insight }>()
+const emit  = defineEmits<{ refresh: [] }>()
 
 const typeMap: Record<string, { color: string; icon: string }> = {
   protein:   { color: 'blue',   icon: 'fitness_center'  },

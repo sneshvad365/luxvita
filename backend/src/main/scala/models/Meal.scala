@@ -17,12 +17,13 @@ case class Meal(
 ) derives ReadWriter
 
 case class MacroEstimate(
-  kcal      : Int,
-  proteinG  : Double,
-  carbsG    : Double,
-  fatG      : Double,
-  fiberG    : Double,
+  kcal       : Int,
+  proteinG   : Double,
+  carbsG     : Double,
+  fatG       : Double,
+  fiberG     : Double,
   description: String,
+  waterMl    : Option[Int] = None,  // liquid content (milk, soup, juice, etc.)
 ) derives ReadWriter
 
 case class TodayTotals(

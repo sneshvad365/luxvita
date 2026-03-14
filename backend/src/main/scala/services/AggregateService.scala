@@ -17,7 +17,7 @@ object AggregateService:
           |  target_kcal, target_protein_g, target_carbs_g, target_fat_g,
           |  target_fiber_g, target_water_l, base_weight_kg, goal_weight_kg,
           |  updated_at
-          |FROM user_profile WHERE user_id = ?""".stripMargin
+          |FROM user_profile WHERE user_id = ?::uuid""".stripMargin
       )
       st.setString(1, userId)
       val rs = st.executeQuery()
@@ -47,6 +47,51 @@ object AggregateService:
   // Today macros
   // ---------------------------------------------------------------------------
 
+  def getMacrosForDate(userId: String, date: String): Macros =
+    Database.withConnection { conn =>
+      val st = conn.prepareStatement(
+        """SELECT COALESCE(SUM(kcal), 0)::int          AS kcal,
+          |       COALESCE(SUM(protein_g), 0)::float8   AS protein_g,
+          |       COALESCE(SUM(carbs_g), 0)::float8     AS carbs_g,
+          |       COALESCE(SUM(fat_g), 0)::float8       AS fat_g,
+          |       COALESCE(SUM(fiber_g), 0)::float8     AS fiber_g
+          |FROM meals
+          |WHERE user_id = ?::uuid
+          |  AND logged_at >= ?::date
+          |  AND logged_at <  ?::date + INTERVAL '1 day'""".stripMargin
+      )
+      st.setString(1, userId)
+      st.setString(2, date)
+      st.setString(3, date)
+      val rs = st.executeQuery()
+      rs.next()
+      Macros(
+        kcal     = rs.getInt("kcal"),
+        proteinG = rs.getDouble("protein_g"),
+        carbsG   = rs.getDouble("carbs_g"),
+        fatG     = rs.getDouble("fat_g"),
+        fiberG   = rs.getDouble("fiber_g"),
+      )
+    }
+
+  def getActivityStringForDate(userId: String, date: String): String =
+    Database.withConnection { conn =>
+      val st = conn.prepareStatement(
+        """SELECT entry FROM activity_logs
+          |WHERE user_id = ?::uuid
+          |  AND logged_at >= ?::date
+          |  AND logged_at <  ?::date + INTERVAL '1 day'
+          |ORDER BY logged_at ASC""".stripMargin
+      )
+      st.setString(1, userId)
+      st.setString(2, date)
+      st.setString(3, date)
+      val rs = st.executeQuery()
+      val buf = scala.collection.mutable.ArrayBuffer[String]()
+      while rs.next() do buf += rs.getString("entry")
+      buf.mkString("; ")
+    }
+
   def getTodayMacros(userId: String): Macros =
     Database.withConnection { conn =>
       val st = conn.prepareStatement(
@@ -56,7 +101,7 @@ object AggregateService:
           |       COALESCE(SUM(fat_g), 0)::float8       AS fat_g,
           |       COALESCE(SUM(fiber_g), 0)::float8     AS fiber_g
           |FROM meals
-          |WHERE user_id = ?
+          |WHERE user_id = ?::uuid
           |  AND logged_at >= date_trunc('day', now() AT TIME ZONE 'UTC')""".stripMargin
       )
       st.setString(1, userId)
@@ -86,7 +131,7 @@ object AggregateService:
           |         COALESCE(SUM(fat_g), 0)::float8       AS fat_g,
           |         COALESCE(SUM(fiber_g), 0)::float8     AS fiber_g
           |  FROM meals
-          |  WHERE user_id = ?
+          |  WHERE user_id = ?::uuid
           |    AND logged_at >= now() - ? * INTERVAL '1 day'
           |  GROUP BY day
           |)
@@ -118,7 +163,7 @@ object AggregateService:
     Database.withConnection { conn =>
       val st = conn.prepareStatement(
         """SELECT entry FROM activity_logs
-          |WHERE user_id = ?
+          |WHERE user_id = ?::uuid
           |  AND logged_at >= date_trunc('day', now() AT TIME ZONE 'UTC')
           |ORDER BY logged_at ASC""".stripMargin
       )
@@ -137,7 +182,7 @@ object AggregateService:
     Database.withConnection { conn =>
       val st = conn.prepareStatement(
         """SELECT weight_kg::float8 FROM weight_logs
-          |WHERE user_id = ?
+          |WHERE user_id = ?::uuid
           |ORDER BY logged_at DESC LIMIT 1""".stripMargin
       )
       st.setString(1, userId)
@@ -175,7 +220,7 @@ object AggregateService:
           |  SELECT date_trunc('day', logged_at AT TIME ZONE 'UTC') AS day,
           |         COALESCE(SUM(protein_g), 0)::float8 AS protein_g
           |  FROM meals
-          |  WHERE user_id = ?
+          |  WHERE user_id = ?::uuid
           |    AND logged_at >= now() - INTERVAL '7 days'
           |  GROUP BY day
           |)
@@ -194,7 +239,7 @@ object AggregateService:
           |         COALESCE(SUM(kcal), 0)::float8 AS kcal,
           |         ROW_NUMBER() OVER (ORDER BY date_trunc('day', logged_at AT TIME ZONE 'UTC')) AS rn
           |  FROM meals
-          |  WHERE user_id = ?
+          |  WHERE user_id = ?::uuid
           |    AND logged_at >= now() - INTERVAL '7 days'
           |  GROUP BY day
           |)
@@ -232,7 +277,7 @@ object AggregateService:
           |         COALESCE(SUM(protein_g), 0)::float8 AS protein_g,
           |         COALESCE(SUM(fiber_g), 0)::float8   AS fiber_g
           |  FROM meals
-          |  WHERE user_id = ?
+          |  WHERE user_id = ?::uuid
           |    AND logged_at >= now() - INTERVAL '30 days'
           |  GROUP BY day
           |)

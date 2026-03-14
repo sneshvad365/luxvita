@@ -83,7 +83,8 @@ object ClaudeService:
        |Already logged today: ${today.kcal} kcal, ${today.proteinG}g protein, ${today.carbsG}g carbs, ${today.fatG}g fat, ${today.fiberG}g fiber
        |${description.map(d => s"New meal: \"$d\"").getOrElse("Meal provided as photo only — estimate from the image.")}
        |
-       |Return: { "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float, "description": string }
+       |Return: { "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float, "description": string, "water_ml": int|null }
+       |water_ml: total liquid content in ml if the meal contains significant liquid (milk, soup, broth, smoothie, juice, coffee, tea, etc.). null for solid food with no notable liquid.
        |""".stripMargin
 
   private def buildMessageContent(
@@ -179,19 +180,26 @@ object ClaudeService:
     val json = ujson.read(response.body())
     json("content")(0)("text").str
 
+  private def stripMarkdown(text: String): String =
+    val t = text.trim
+    if t.startsWith("```") then
+      t.dropWhile(_ != '\n').dropWhile(_ == '\n').reverse.dropWhile(_ != '}').reverse
+    else t
+
   private def parseMacroEstimate(text: String): MacroEstimate =
-    val json = ujson.read(text.trim)
+    val json = ujson.read(stripMarkdown(text))
     MacroEstimate(
-      kcal       = json("kcal").num.toInt,
-      proteinG   = json("protein_g").num,
-      carbsG     = json("carbs_g").num,
-      fatG       = json("fat_g").num,
-      fiberG     = json("fiber_g").num,
+      kcal        = json("kcal").num.toInt,
+      proteinG    = json("protein_g").num,
+      carbsG      = json("carbs_g").num,
+      fatG        = json("fat_g").num,
+      fiberG      = json("fiber_g").num,
       description = json("description").str,
+      waterMl     = json.obj.get("water_ml").flatMap(v => if v.isNull then None else Some(v.num.toInt)),
     )
 
   private def parseActivityJson(text: String): ParsedActivity =
-    val json = ujson.read(text.trim)
+    val json = ujson.read(stripMarkdown(text))
     ParsedActivity(
       `type`      = json("type").str,
       durationMin = json.obj.get("duration_min").flatMap(v => if v.isNull then None else Some(v.num.toInt)),
@@ -202,9 +210,9 @@ object ClaudeService:
     )
 
   private def parseInsight(text: String): Insight =
-    val json = ujson.read(text.trim)
+    val json = ujson.read(stripMarkdown(text))
     Insight(insight = json("insight").str, `type` = json("type").str)
 
   private def parseInsightArray(text: String): List[Insight] =
-    val arr = ujson.read(text.trim).arr
+    val arr = ujson.read(stripMarkdown(text)).arr
     arr.map(j => Insight(insight = j("insight").str, `type` = j("type").str)).toList

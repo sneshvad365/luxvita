@@ -15,3 +15,4 @@ frontend/.quasar/
 
 # OS
 .DS_Store
+backend/cask/

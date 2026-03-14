@@ -4,35 +4,42 @@
   "description": "LuxVita nutrition tracking app",
   "private": true,
   "scripts": {
-    "dev":   "quasar dev",
+    "dev": "quasar dev",
     "build": "quasar build",
-    "lint":  "eslint --ext .js,.ts,.vue src/"
+    "lint": "eslint --ext .js,.ts,.vue src/"
   },
   "dependencies": {
     "@capacitor/camera": "^6.0.0",
-    "@capacitor/core":   "^6.0.0",
-    "@quasar/extras":    "^1.16.12",
-    "axios":             "^1.7.2",
-    "pinia":             "^2.1.7",
-    "quasar":            "^2.16.0",
-    "vue":               "^3.4.29",
-    "vue-router":        "^4.3.3",
-    "@vue/devtools-api": "^6.5.0"
+    "@capacitor/core": "^6.0.0",
+    "@quasar/extras": "^1.16.12",
+    "@vue/devtools-api": "^6.5.0",
+    "axios": "^1.7.2",
+    "pinia": "^2.1.7",
+    "quasar": "^2.16.0",
+    "vue": "^3.4.29",
+    "vue-router": "^4.3.3"
   },
   "devDependencies": {
-    "@capacitor/cli":         "^6.0.0",
-    "@quasar/app-vite":       "^1.9.0",
-    "@types/node":            "^20.14.5",
+    "@capacitor/cli": "^6.0.0",
+    "@quasar/app-vite": "^1.9.0",
+    "@types/node": "^20.14.5",
     "@typescript-eslint/eslint-plugin": "^7.13.0",
-    "@typescript-eslint/parser":        "^7.13.0",
-    "@vue/eslint-config-typescript":    "^13.0.0",
-    "eslint":                "^8.57.0",
-    "eslint-plugin-vue":     "^9.26.0",
-    "typescript":            "^5.4.5"
+    "@typescript-eslint/parser": "^7.13.0",
+    "@vue/eslint-config-typescript": "^13.0.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.26.0",
+    "typescript": "^5.4.5",
+    "workbox-build": "7.0.x",
+    "workbox-cacheable-response": "7.0.x",
+    "workbox-core": "7.0.x",
+    "workbox-expiration": "7.0.x",
+    "workbox-precaching": "7.0.x",
+    "workbox-routing": "7.0.x",
+    "workbox-strategies": "7.0.x"
   },
   "engines": {
     "node": ">= 18.0.0",
-    "npm":  ">= 6.13.4",
+    "npm": ">= 6.13.4",
     "yarn": ">= 1.21.1"
   }
 }

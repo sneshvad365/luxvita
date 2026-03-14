@@ -33,11 +33,12 @@ object MealRoutes extends BaseRoutes:
           val (mealId, loggedAt) = Database.withConnection { conn =>
             val st = conn.prepareStatement(
               """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate)
-                |VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
                 |RETURNING id, logged_at""".stripMargin
             )
             st.setString(1, userId)
-            description match
+            val storedDescription = description.orElse(Some(estimate.description).filter(_.nonEmpty))
+            storedDescription match
               case Some(d) => st.setString(2, d)
               case None    => st.setNull(2, java.sql.Types.VARCHAR)
             st.setBoolean(3, photo.isDefined)
@@ -73,6 +74,7 @@ object MealRoutes extends BaseRoutes:
                 "fatG"        -> estimate.fatG,
                 "fiberG"      -> estimate.fiberG,
                 "description" -> estimate.description,
+                "waterMl"     -> estimate.waterMl.map(ujson.Num(_)).getOrElse(ujson.Null),
               ),
             ),
             status = 201,
@@ -83,19 +85,90 @@ object MealRoutes extends BaseRoutes:
           err("SERVER_ERROR", e.getMessage, 500)
     }
 
-  @cask.get("/api/meals/today")
-  def todayMeals(request: cask.Request): cask.Response[String] =
+  @cask.put("/api/meals/:id")
+  def updateMeal(id: String, request: cask.Request): cask.Response[String] =
     withAuth(request) { userId =>
       try
+        val body        = ujson.read(request.text())
+        val description = body.obj.get("description").flatMap(v => if v.isNull then None else Some(v.str)).filter(_.nonEmpty)
+        val kcal        = body("kcal").num.toInt
+        val proteinG    = body("proteinG").num
+        val carbsG      = body("carbsG").num
+        val fatG        = body("fatG").num
+        val fiberG      = body("fiberG").num
+
+        val updated = Database.withConnection { conn =>
+          val st = conn.prepareStatement(
+            """UPDATE meals SET description = ?, kcal = ?, protein_g = ?, carbs_g = ?, fat_g = ?, fiber_g = ?
+              |WHERE id = ?::uuid AND user_id = ?::uuid
+              |RETURNING id""".stripMargin
+          )
+          description match
+            case Some(d) => st.setString(1, d)
+            case None    => st.setNull(1, java.sql.Types.VARCHAR)
+          st.setInt(2, kcal)
+          st.setDouble(3, proteinG)
+          st.setDouble(4, carbsG)
+          st.setDouble(5, fatG)
+          st.setDouble(6, fiberG)
+          st.setString(7, id)
+          st.setString(8, userId)
+          st.executeQuery().next()
+        }
+        if updated then
+          ok(ujson.Obj(
+            "id"          -> id,
+            "description" -> description.map(ujson.Str.apply).getOrElse(ujson.Null),
+            "kcal"        -> kcal,
+            "proteinG"    -> proteinG,
+            "carbsG"      -> carbsG,
+            "fatG"        -> fatG,
+            "fiberG"      -> fiberG,
+          ))
+        else
+          err("NOT_FOUND", "Meal not found", 404)
+      catch
+        case e: Exception =>
+          err("SERVER_ERROR", e.getMessage, 500)
+    }
+
+  @cask.delete("/api/meals/:id")
+  def deleteMeal(id: String, request: cask.Request): cask.Response[String] =
+    withAuth(request) { userId =>
+      try
+        val deleted = Database.withConnection { conn =>
+          val st = conn.prepareStatement(
+            "DELETE FROM meals WHERE id = ?::uuid AND user_id = ?::uuid RETURNING id"
+          )
+          st.setString(1, id)
+          st.setString(2, userId)
+          st.executeQuery().next()
+        }
+        if deleted then ok(ujson.Obj("id" -> id))
+        else err("NOT_FOUND", "Meal not found", 404)
+      catch
+        case e: Exception =>
+          err("SERVER_ERROR", e.getMessage, 500)
+    }
+
+  @cask.get("/api/meals/today")
+  def todayMeals(date: Option[String] = None, request: cask.Request): cask.Response[String] =
+    withAuth(request) { userId =>
+      try
+        val resolvedDate = date.filter(_.nonEmpty)
+          .getOrElse(java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString)
         val meals = Database.withConnection { conn =>
           val st = conn.prepareStatement(
             """SELECT id, logged_at, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g
               |FROM meals
-              |WHERE user_id = ?
-              |  AND logged_at >= date_trunc('day', now() AT TIME ZONE 'UTC')
+              |WHERE user_id = ?::uuid
+              |  AND logged_at >= ?::date
+              |  AND logged_at <  ?::date + INTERVAL '1 day'
               |ORDER BY logged_at ASC""".stripMargin
           )
           st.setString(1, userId)
+          st.setString(2, resolvedDate)
+          st.setString(3, resolvedDate)
           val rs  = st.executeQuery()
           val buf = scala.collection.mutable.ArrayBuffer[ujson.Obj]()
           while rs.next() do
@@ -125,7 +198,7 @@ object MealRoutes extends BaseRoutes:
           buf.toList
         }
 
-        val totals = AggregateService.getTodayMacros(userId)
+        val totals = AggregateService.getMacrosForDate(userId, resolvedDate)
 
         ok(ujson.Obj(
           "meals" -> ujson.Arr(meals*),

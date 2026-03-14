@@ -40,7 +40,7 @@ object ProfileRoutes extends BaseRoutes:
             """INSERT INTO user_profile
               |  (user_id, bio, goal, target_kcal, target_protein_g, target_carbs_g,
               |   target_fat_g, target_fiber_g, target_water_l, base_weight_kg, goal_weight_kg)
-              |VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               |ON CONFLICT (user_id) DO UPDATE SET
               |  bio             = EXCLUDED.bio,
               |  goal            = EXCLUDED.goal,

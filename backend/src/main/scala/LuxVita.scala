@@ -23,4 +23,5 @@ object LuxVita extends cask.Main:
     routes.ProfileRoutes,
     routes.InsightRoutes,
     routes.TrendsRoutes,
+    routes.WaterRoutes,
   )

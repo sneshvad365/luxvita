@@ -10,6 +10,7 @@ object Database:
 
   def init(jdbcUrl: String, user: String, password: String): Unit =
     val cfg = HikariConfig()
+    cfg.setDriverClassName("org.postgresql.Driver")
     cfg.setJdbcUrl(jdbcUrl)
     cfg.setUsername(user)
     cfg.setPassword(password)

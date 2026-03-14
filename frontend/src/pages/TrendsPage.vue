@@ -16,7 +16,7 @@
               label="kg"
               outlined
               dense
-              style="width: 120px"
+              class="col"
             />
             <q-btn label="Save" color="primary" unelevated :loading="weightLoading" @click="logWeight" />
           </div>

@@ -35,6 +35,22 @@ lazy val root = project
     // Run in forked JVM so System.exit() works cleanly
     fork := true,
 
+    // Load .env file into the forked JVM's environment
+    envVars := {
+      val envFile = baseDirectory.value / ".." / ".env"
+      if (envFile.exists()) {
+        scala.io.Source.fromFile(envFile).getLines()
+          .map(_.trim)
+          .filterNot(l => l.isEmpty || l.startsWith("#"))
+          .flatMap { line =>
+            val idx = line.indexOf('=')
+            if (idx > 0) Some(line.substring(0, idx) -> line.substring(idx + 1))
+            else None
+          }
+          .toMap
+      } else Map.empty
+    },
+
     // Assembly / packaging settings
     Compile / mainClass := Some("LuxVita"),
   )
