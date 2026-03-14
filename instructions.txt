@@ -1,0 +1,246 @@
+===========================================================
+  LuxVita — Setup Guide (Fresh Machine)
+===========================================================
+
+OVERVIEW
+--------
+LuxVita has three parts:
+  1. Backend  — Scala 3 / sbt, runs on port 8080
+  2. Frontend — Quasar (Vue 3) PWA, built as static files
+  3. Proxy    — Node.js server on port 9001 that serves the
+                frontend and forwards /api/* to the backend
+  4. Database — PostgreSQL
+
+The proxy is what you (and ngrok) point your browser at.
+
+
+-----------------------------------------------------------
+STEP 1 — Install Prerequisites
+-----------------------------------------------------------
+
+1a. Java 17+
+    macOS:   brew install openjdk@17
+    Ubuntu:  sudo apt install openjdk-17-jdk
+    Windows: download from https://adoptium.net
+
+    Verify: java -version   (must show 17 or higher)
+
+1b. sbt (Scala build tool)
+    macOS:   brew install sbt
+    Ubuntu:  https://www.scala-sbt.org/download.html
+    Windows: https://www.scala-sbt.org/download.html
+
+    Verify: sbt --version
+
+1c. Node.js 18+ and npm
+    macOS:   brew install node
+    Ubuntu:  sudo apt install nodejs npm
+    Windows: https://nodejs.org
+
+    Verify: node --version   (must show 18 or higher)
+            npm --version
+
+1d. Quasar CLI
+    npm install -g @quasar/cli
+
+    Verify: quasar --version
+
+1e. Docker (easiest way to run PostgreSQL)
+    https://docs.docker.com/get-docker/
+
+    Verify: docker --version
+
+
+-----------------------------------------------------------
+STEP 2 — Clone the Repository
+-----------------------------------------------------------
+
+    git clone https://github.com/sneshvad365/luxvita.git
+    cd luxvita
+
+
+-----------------------------------------------------------
+STEP 3 — Start PostgreSQL
+-----------------------------------------------------------
+
+Run PostgreSQL in Docker:
+
+    docker run -d \
+      --name luxvita-postgres \
+      -e POSTGRES_USER=luxvita \
+      -e POSTGRES_PASSWORD=luxvita \
+      -e POSTGRES_DB=luxvita \
+      -p 5432:5432 \
+      postgres:16
+
+To start it again after a reboot:
+
+    docker start luxvita-postgres
+
+Verify it is running:
+
+    docker ps   (should show luxvita-postgres)
+
+NOTE: The backend runs Flyway migrations automatically on
+startup — you do NOT need to create tables manually.
+
+
+-----------------------------------------------------------
+STEP 4 — Configure Environment Variables
+-----------------------------------------------------------
+
+Create a file called .env in the project root (luxvita/.env):
+
+    ANTHROPIC_API_KEY=sk-ant-...your-key-here...
+    DATABASE_URL=jdbc:postgresql://localhost:5432/luxvita
+    JWT_SECRET=any-long-random-string-you-choose
+
+Get your Anthropic API key from: https://console.anthropic.com
+
+The backend reads these automatically from .env via
+application.conf. DB user/password default to "luxvita"
+(matching the Docker setup above). Override with DB_USER
+and DB_PASSWORD env vars if needed.
+
+IMPORTANT: Never commit .env to git. It is already in .gitignore.
+
+
+-----------------------------------------------------------
+STEP 5 — Start the Backend
+-----------------------------------------------------------
+
+    cd backend
+    sbt run
+
+The first run downloads all Scala dependencies (~2–5 min).
+Subsequent starts are much faster (~30 sec).
+
+You will see:
+    INFO: LuxVita listening on port 8080
+
+Leave this terminal open.
+
+
+-----------------------------------------------------------
+STEP 6 — Build the Frontend
+-----------------------------------------------------------
+
+Open a new terminal:
+
+    cd frontend
+    npm install          # first time only — installs dependencies
+    VITE_API_BASE_URL= npx quasar build -m pwa
+
+This produces built files in: frontend/dist/pwa/
+
+NOTE: VITE_API_BASE_URL must be empty (not set to anything)
+so the frontend uses relative URLs that the proxy handles.
+If you set it to a value, API calls will go directly to that
+URL instead of through the proxy.
+
+
+-----------------------------------------------------------
+STEP 7 — Start the Proxy
+-----------------------------------------------------------
+
+Open a new terminal:
+
+    cd luxvita   # project root
+    npm install http-proxy --prefix /tmp   # one-time install
+    node proxy.cjs
+
+You will see:
+    Proxy on http://localhost:9001
+
+The proxy:
+  - Serves the built frontend (frontend/dist/pwa/) on port 9001
+  - Forwards all /api/* requests to the backend on port 8080
+
+
+-----------------------------------------------------------
+STEP 8 — Open in Browser (Local)
+-----------------------------------------------------------
+
+    http://localhost:9001
+
+Register a new account, then start logging meals and data.
+
+
+-----------------------------------------------------------
+STEP 9 — Access from Phone / External Devices (ngrok)
+-----------------------------------------------------------
+
+Install ngrok: https://ngrok.com/download
+(or: brew install ngrok)
+
+Sign up for a free account and authenticate:
+
+    ngrok config add-authtoken YOUR_NGROK_TOKEN
+
+Start a tunnel to the proxy:
+
+    ngrok http 9001
+
+You will see a line like:
+    Forwarding   https://xxxx-xxxx.ngrok-free.app -> localhost:9001
+
+Open that HTTPS URL on your phone.
+
+NOTE: The free ngrok URL changes every time you restart ngrok.
+To use a fixed URL, upgrade to a paid ngrok plan and set a
+static domain.
+
+
+-----------------------------------------------------------
+SUMMARY — What to Run Each Session
+-----------------------------------------------------------
+
+Every time you want to use LuxVita, run these in order:
+
+  Terminal 1 (database):
+    docker start luxvita-postgres
+
+  Terminal 2 (backend):
+    cd luxvita/backend
+    sbt run
+
+  Terminal 3 (proxy):
+    cd luxvita
+    node proxy.cjs
+
+  Terminal 4 (optional, phone access):
+    ngrok http 9001
+
+Then open http://localhost:9001 (or the ngrok URL on your phone).
+
+You only need to rebuild the frontend (Step 6) when you
+change frontend code.
+
+
+-----------------------------------------------------------
+TROUBLESHOOTING
+-----------------------------------------------------------
+
+Backend won't start — port 8080 already in use:
+    lsof -i :8080        (macOS/Linux)
+    Kill the process and retry.
+
+Database connection refused:
+    docker ps            (check luxvita-postgres is running)
+    docker start luxvita-postgres
+
+Frontend shows blank page or 404 after build:
+    Make sure VITE_API_BASE_URL= is empty when building.
+    Rebuild: VITE_API_BASE_URL= npx quasar build -m pwa
+
+API calls return 401 Unauthorized:
+    Your JWT has expired (30-day window).
+    Log out and log back in to get a new token.
+
+sbt fails to download dependencies:
+    Check internet connection and retry: sbt run
+    Corporate firewall? Configure sbt proxy settings.
+
+ngrok tunnel shows "ERR_NGROK_3200":
+    The proxy (node proxy.cjs) is not running.
+    Start it and retry.

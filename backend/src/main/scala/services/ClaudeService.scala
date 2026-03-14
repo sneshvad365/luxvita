@@ -85,6 +85,28 @@ object ClaudeService:
     val dateOpt     = json.obj.get("document_date").flatMap(v => if v.isNull then None else Some(v.str))
     (extracted, dateOpt)
 
+  def dailyInsightChat(
+    profile       : UserProfile,
+    targets       : Macros,
+    today         : Macros,
+    activityStr   : String,
+    weightKg      : Option[Double],
+    medicalContext: String,
+    messages      : List[(String, String)],
+  ): String =
+    val sysMsg =
+      s"""You are a personal nutrition coach helping a user understand their daily health data.
+         |${profile.bio.map(b => s"User profile: \"$b\"").getOrElse("")}
+         |${if medicalContext.nonEmpty then s"\nMedical context:\n$medicalContext\n" else ""}
+         |Today's data:
+         |Targets: { kcal: ${targets.kcal}, protein: ${targets.proteinG}g, carbs: ${targets.carbsG}g, fat: ${targets.fatG}g, fiber: ${targets.fiberG}g }
+         |Logged: { kcal: ${today.kcal}, protein: ${today.proteinG}g, carbs: ${today.carbsG}g, fat: ${today.fatG}g, fiber: ${today.fiberG}g }
+         |Activity: "$activityStr"
+         |${weightKg.map(w => s"Weight: ${w}kg").getOrElse("")}
+         |
+         |Be concise and actionable. Max 2–3 sentences per response.""".stripMargin
+    callClaudeMultiTurn(systemMsg = sysMsg, messages = messages)
+
   def medicalInsight(medicalContext: String, profile: UserProfile): String =
     val profileStr = profile.bio.map(b => s"User profile: \"$b\"\n\n").getOrElse("")
     val prompt =

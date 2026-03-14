@@ -118,6 +118,40 @@ object InsightRoutes extends BaseRoutes:
           err("SERVER_ERROR", e.getMessage, 500)
     }
 
+  @cask.post("/api/insights/chat")
+  def insightChat(request: cask.Request): cask.Response[String] =
+    withAuth(request) { userId =>
+      try
+        val body     = ujson.read(request.text())
+        val messages = body("messages").arr.map(m => (m("role").str, m("content").str)).toList
+        val dateStr  = body.obj.get("date").flatMap(v => if v.isNull then None else Some(v.str))
+          .filter(_.nonEmpty).getOrElse(todayStr)
+        val profile        = AggregateService.getProfileOrDefault(userId)
+        val targets        = models.Macros(
+          kcal     = profile.targetKcal,
+          proteinG = profile.targetProteinG.toDouble,
+          carbsG   = profile.targetCarbsG.toDouble,
+          fatG     = profile.targetFatG.toDouble,
+          fiberG   = profile.targetFiberG.toDouble,
+        )
+        val todayMacros    = AggregateService.getMacrosForDate(userId, dateStr)
+        val activityStr    = AggregateService.getActivityStringForDate(userId, dateStr)
+        val weightKg       = AggregateService.getLatestWeightKg(userId)
+        val medicalContext = AggregateService.getMedicalContext(userId)
+        val reply = ClaudeService.dailyInsightChat(
+          profile        = profile,
+          targets        = targets,
+          today          = todayMacros,
+          activityStr    = activityStr,
+          weightKg       = weightKg,
+          medicalContext = medicalContext,
+          messages       = messages,
+        )
+        ok(ujson.Obj("reply" -> reply))
+      catch
+        case e: Exception => err("SERVER_ERROR", e.getMessage, 500)
+    }
+
   private def generateAndSaveWeeklyInsights(userId: String, weekDate: String): Unit =
     // Skip if already generated for this Sunday
     val alreadyExists = Database.withConnection { conn =>

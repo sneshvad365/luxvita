@@ -1,12 +1,11 @@
 <template>
   <q-page class="q-pa-md q-pb-xl">
     <div class="q-gutter-md">
-      <div class="row items-center justify-between">
-        <div class="text-h6 text-weight-bold">Health records</div>
-        <div class="row q-gutter-sm">
-          <q-btn unelevated color="secondary" icon="psychology" label="Insight" size="sm" @click="getInsight" :loading="insightLoading" />
-          <q-btn unelevated color="primary"   icon="add"        label="Add record" size="sm" @click="addOpen = true" />
-        </div>
+      <div class="text-h6 text-weight-bold">Health records</div>
+
+      <div class="row q-gutter-sm">
+        <q-btn unelevated color="secondary" icon="psychology" label="Insight"    class="col" @click="getInsight" :loading="insightLoading" />
+        <q-btn unelevated color="primary"   icon="add"        label="Add record" class="col" @click="addOpen = true" />
       </div>
 
       <div v-if="records.length === 0" class="text-grey-5 text-center q-py-xl text-body2">
