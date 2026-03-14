@@ -43,8 +43,8 @@
 
       <!-- Weekly insights -->
       <template v-if="trends.insights.length">
-        <div class="text-subtitle2 text-weight-bold">Weekly insights</div>
-        <InsightCard v-for="(ins, i) in trends.insights" :key="i" :insight="ins" />
+        <div class="text-subtitle2 text-weight-bold">This week's insights</div>
+        <InsightCard v-for="(ins, i) in trends.insights" :key="i" :insight="ins" show-title no-refresh />
       </template>
     </div>
   </q-page>
