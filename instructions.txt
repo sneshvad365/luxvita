@@ -222,6 +222,10 @@ Then open http://localhost:9001/luxvita (or https://xxxx.ngrok-free.app/luxvita 
 You only need to rebuild the frontend (Step 6) when you
 change frontend code.
 
+NOTE: The built frontend (frontend/dist/) is NOT stored in git.
+After every git pull that includes frontend changes, you must
+rebuild the frontend manually (Step 6) on that machine.
+
 
 -----------------------------------------------------------
 TROUBLESHOOTING
