@@ -4,7 +4,7 @@ import { LocalStorage } from 'quasar'
 // In dev, use relative URLs so Vite's proxy handles routing to the backend.
 // In production builds, set VITE_API_BASE_URL to the real backend origin.
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.PROD ? (import.meta.env.VITE_API_BASE_URL ?? '') : '',
+  baseURL: import.meta.env.PROD ? (import.meta.env.VITE_API_BASE_URL || import.meta.env.BASE_URL || '') : '',
   timeout: 30_000,
 })
 
