@@ -153,15 +153,20 @@ You will see:
     Proxy on http://localhost:9001
 
 The proxy:
-  - Serves the built frontend (frontend/dist/pwa/) on port 9001
-  - Forwards all /api/* requests to the backend on port 8080
+  - Redirects http://localhost:9001 → http://localhost:9001/luxvita
+  - Serves the built frontend at /luxvita (frontend/dist/pwa/)
+  - Forwards all /luxvita/api/* requests to the backend on port 8080
+  - Designed to host multiple apps on the same port — add future
+    apps as new entries in the APPS array at the top of proxy.cjs
 
 
 -----------------------------------------------------------
 STEP 8 — Open in Browser (Local)
 -----------------------------------------------------------
 
-    http://localhost:9001
+    http://localhost:9001/luxvita
+
+(Navigating to http://localhost:9001 will redirect there automatically.)
 
 Register a new account, then start logging meals and data.
 
@@ -184,7 +189,8 @@ Start a tunnel to the proxy:
 You will see a line like:
     Forwarding   https://xxxx-xxxx.ngrok-free.app -> localhost:9001
 
-Open that HTTPS URL on your phone.
+Open that HTTPS URL on your phone with the /luxvita suffix:
+    https://xxxx-xxxx.ngrok-free.app/luxvita
 
 NOTE: The free ngrok URL changes every time you restart ngrok.
 To use a fixed URL, upgrade to a paid ngrok plan and set a
@@ -211,7 +217,7 @@ Every time you want to use LuxVita, run these in order:
   Terminal 4 (optional, phone access):
     ngrok http 9001
 
-Then open http://localhost:9001 (or the ngrok URL on your phone).
+Then open http://localhost:9001/luxvita (or https://xxxx.ngrok-free.app/luxvita on your phone).
 
 You only need to rebuild the frontend (Step 6) when you
 change frontend code.
@@ -232,6 +238,7 @@ Database connection refused:
 Frontend shows blank page or 404 after build:
     Make sure VITE_API_BASE_URL= is empty when building.
     Rebuild: VITE_API_BASE_URL= npx quasar build -m pwa
+    Then access via /luxvita, not the root URL.
 
 API calls return 401 Unauthorized:
     Your JWT has expired (30-day window).

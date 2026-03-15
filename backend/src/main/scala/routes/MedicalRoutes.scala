@@ -9,38 +9,52 @@ object MedicalRoutes extends BaseRoutes:
   def createRecord(request: cask.Request): cask.Response[String] =
     withAuth(request) { userId =>
       try
-        val body       = ujson.read(request.text())
-        val title      = body("title").str.trim
-        val sourceType = body.obj.get("pdf").flatMap(v => if v.isNull then None else Some(v.str)) match
-          case Some(_) => "pdf"
-          case None    => "text"
+        val body  = ujson.read(request.text())
+        val title = body("title").str.trim
 
         if title.isEmpty then
           err("INVALID_INPUT", "Title is required", 400)
         else
+          // Detect source type and file data
+          val (sourceType, fileDataOpt, fileMimeOpt) =
+            if body.obj.get("pdf").exists(!_.isNull) then
+              ("pdf", Some(body("pdf").str), Some("application/pdf"))
+            else if body.obj.get("image").exists(!_.isNull) then
+              ("image", Some(body("image").str), Some("image/jpeg"))
+            else
+              ("text", None, None)
+
           val (content, documentDate) = sourceType match
-            case "pdf" =>
-              val pdfBase64 = body("pdf").str
-              ClaudeService.extractMedicalText(title, pdfBase64)
+            case "pdf" | "image" =>
+              val mediaType = fileMimeOpt.get
+              ClaudeService.extractMedicalText(title, fileDataOpt.get, mediaType)
             case _ =>
               val c = body("content").str.trim
               if c.isEmpty then return err("INVALID_INPUT", "Content is required", 400)
               (c, None)
 
           val (recId, createdAt) = Database.withConnection { conn =>
-            val (sql, params) = documentDate match
-              case Some(d) =>
-                ("""INSERT INTO medical_records (user_id, title, content, source_type, created_at)
-                   |VALUES (?::uuid, ?, ?, ?, ?::date)
-                   |RETURNING id, created_at""".stripMargin,
-                 List(userId, title, content, sourceType, d))
+            val sql = documentDate match
+              case Some(_) =>
+                """INSERT INTO medical_records (user_id, title, content, source_type, file_data, file_mime_type, created_at)
+                  |VALUES (?::uuid, ?, ?, ?, ?, ?, ?::date)
+                  |RETURNING id, created_at""".stripMargin
               case None =>
-                ("""INSERT INTO medical_records (user_id, title, content, source_type)
-                   |VALUES (?::uuid, ?, ?, ?)
-                   |RETURNING id, created_at""".stripMargin,
-                 List(userId, title, content, sourceType))
+                """INSERT INTO medical_records (user_id, title, content, source_type, file_data, file_mime_type)
+                  |VALUES (?::uuid, ?, ?, ?, ?, ?)
+                  |RETURNING id, created_at""".stripMargin
             val st = conn.prepareStatement(sql)
-            params.zipWithIndex.foreach { case (v, i) => st.setString(i + 1, v) }
+            st.setString(1, userId)
+            st.setString(2, title)
+            st.setString(3, content)
+            st.setString(4, sourceType)
+            fileDataOpt match
+              case Some(fd) => st.setString(5, fd)
+              case None     => st.setNull(5, java.sql.Types.VARCHAR)
+            fileMimeOpt match
+              case Some(fm) => st.setString(6, fm)
+              case None     => st.setNull(6, java.sql.Types.VARCHAR)
+            documentDate.foreach(d => st.setString(7, d))
             val rs = st.executeQuery()
             rs.next()
             (rs.getString("id"), rs.getString("created_at"))
@@ -64,7 +78,8 @@ object MedicalRoutes extends BaseRoutes:
       try
         val records = Database.withConnection { conn =>
           val st = conn.prepareStatement(
-            """SELECT id, title, source_type, created_at
+            """SELECT id, title, source_type, created_at,
+              |       (content <> 'NO_MEDICAL_CONTENT') AS has_content
               |FROM medical_records
               |WHERE user_id = ?::uuid
               |ORDER BY created_at DESC""".stripMargin
@@ -78,6 +93,7 @@ object MedicalRoutes extends BaseRoutes:
               "title"      -> rs.getString("title"),
               "sourceType" -> rs.getString("source_type"),
               "createdAt"  -> rs.getString("created_at"),
+              "hasContent" -> rs.getBoolean("has_content"),
             )
           buf.toList
         }
@@ -93,7 +109,7 @@ object MedicalRoutes extends BaseRoutes:
       try
         val record = Database.withConnection { conn =>
           val st = conn.prepareStatement(
-            """SELECT id, title, content, source_type, created_at
+            """SELECT id, title, content, source_type, file_data, file_mime_type, created_at
               |FROM medical_records
               |WHERE id = ?::uuid AND user_id = ?::uuid""".stripMargin
           )
@@ -101,13 +117,16 @@ object MedicalRoutes extends BaseRoutes:
           st.setString(2, userId)
           val rs = st.executeQuery()
           if rs.next() then
-            Some(ujson.Obj(
+            val obj = ujson.Obj(
               "id"         -> rs.getString("id"),
               "title"      -> rs.getString("title"),
               "content"    -> rs.getString("content"),
               "sourceType" -> rs.getString("source_type"),
               "createdAt"  -> rs.getString("created_at"),
-            ))
+            )
+            Option(rs.getString("file_data")).foreach(fd => obj("fileData") = fd)
+            Option(rs.getString("file_mime_type")).foreach(fm => obj("fileMimeType") = fm)
+            Some(obj)
           else None
         }
         record match

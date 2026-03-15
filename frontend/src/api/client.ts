@@ -134,11 +134,14 @@ export interface Insight {
 }
 
 export interface MedicalRecord {
-  id:         string
-  title:      string
-  sourceType: 'text' | 'pdf'
-  createdAt:  string
-  content?:   string
+  id:           string
+  title:        string
+  sourceType:   'text' | 'pdf' | 'image'
+  createdAt:    string
+  hasContent?:  boolean
+  content?:     string
+  fileData?:    string
+  fileMimeType?: string
 }
 
 export interface TrendsSummary {

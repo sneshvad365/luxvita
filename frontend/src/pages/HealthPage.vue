@@ -22,10 +22,21 @@
           @click="openRecord(rec.id)"
         >
           <q-item-section avatar>
-            <q-icon :name="rec.sourceType === 'pdf' ? 'picture_as_pdf' : 'notes'" color="primary" />
+            <q-icon :name="rec.sourceType === 'pdf' ? 'picture_as_pdf' : rec.sourceType === 'image' ? 'image' : 'notes'" color="primary" />
           </q-item-section>
           <q-item-section>
-            <q-item-label class="text-body2">{{ rec.title }}</q-item-label>
+            <q-item-label class="text-body2 row items-center q-gutter-xs">
+              <span>{{ rec.title }}</span>
+              <q-chip
+                v-if="rec.hasContent === false"
+                dense
+                color="warning"
+                text-color="white"
+                icon="warning"
+                label="No medical data"
+                size="xs"
+              />
+            </q-item-label>
             <q-item-label caption>{{ formatDate(rec.createdAt) }}</q-item-label>
           </q-item-section>
           <q-item-section side>
@@ -91,7 +102,7 @@
 
           <q-btn-toggle
             v-model="addForm.type"
-            :options="[{ label: 'Plain text', value: 'text' }, { label: 'PDF upload', value: 'pdf' }]"
+            :options="[{ label: 'Plain text', value: 'text' }, { label: 'PDF or image', value: 'file' }]"
             unelevated dense spread
             color="primary"
             text-color="grey-7"
@@ -112,10 +123,10 @@
           <div v-else class="q-mt-sm">
             <q-file
               v-model="addForm.pdfFile"
-              label="Choose PDF"
+              label="Choose PDF or image"
               outlined
               dense
-              accept=".pdf"
+              accept=".pdf,.jpg,.jpeg"
               hint="Claude will extract the medical data automatically"
             >
               <template #prepend><q-icon name="attach_file" /></template>
@@ -166,6 +177,28 @@
         </q-card-section>
 
         <q-card-section class="col scroll">
+          <!-- Original file preview (only in view mode) -->
+          <template v-if="!editMode && viewRecord?.fileData">
+            <div class="q-mb-sm">
+              <img
+                v-if="viewRecord.sourceType === 'image'"
+                :src="`data:${viewRecord.fileMimeType};base64,${viewRecord.fileData}`"
+                style="max-width:100%;border-radius:8px"
+              />
+              <q-btn
+                v-else-if="viewRecord.sourceType === 'pdf'"
+                unelevated
+                color="primary"
+                icon="open_in_new"
+                label="View PDF"
+                size="sm"
+                @click="openOriginalFile"
+              />
+            </div>
+            <q-separator class="q-mb-sm" />
+            <div class="text-caption text-grey-6 q-mb-xs">Extracted text</div>
+          </template>
+
           <q-input
             v-if="editMode"
             v-model="editForm.content"
@@ -210,7 +243,7 @@ const chatLoading    = ref(false)
 
 const addForm = ref({
   title:   '',
-  type:    'text' as 'text' | 'pdf',
+  type:    'text' as 'text' | 'file',
   content: '',
   pdfFile: null as File | null,
 })
@@ -218,7 +251,7 @@ const addForm = ref({
 onMounted(loadRecords)
 
 function resetAddForm() {
-  addForm.value = { title: '', type: 'text', content: '', pdfFile: null }
+  addForm.value = { title: '', type: 'text' as 'text' | 'file', content: '', pdfFile: null }
 }
 
 async function loadRecords() {
@@ -230,9 +263,13 @@ async function submitRecord() {
   addLoading.value = true
   try {
     let body: Record<string, unknown>
-    if (addForm.value.type === 'pdf' && addForm.value.pdfFile) {
+    if (addForm.value.type === 'file' && addForm.value.pdfFile) {
       const b64 = await fileToBase64(addForm.value.pdfFile)
-      body = { title: addForm.value.title, pdf: b64 }
+      if (addForm.value.pdfFile.type === 'application/pdf') {
+        body = { title: addForm.value.title, pdf: b64 }
+      } else {
+        body = { title: addForm.value.title, image: b64 }
+      }
     } else {
       body = { title: addForm.value.title, content: addForm.value.content }
     }
@@ -313,6 +350,15 @@ async function sendChat() {
 function clearChat() {
   chatMessages.value = []
   chatInput.value    = ''
+}
+
+function openOriginalFile() {
+  if (!viewRecord.value?.fileData || !viewRecord.value?.fileMimeType) return
+  const byteChars = atob(viewRecord.value.fileData)
+  const bytes = new Uint8Array(byteChars.length)
+  for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i)
+  const blob = new Blob([bytes], { type: viewRecord.value.fileMimeType })
+  window.open(URL.createObjectURL(blob), '_blank')
 }
 
 function fileToBase64(file: File): Promise<string> {

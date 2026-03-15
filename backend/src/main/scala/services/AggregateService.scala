@@ -191,8 +191,10 @@ object AggregateService:
       val rs  = st.executeQuery()
       val buf = scala.collection.mutable.ArrayBuffer[String]()
       while rs.next() do
-        val date = rs.getString("created_at").take(10)
-        buf += s"[${date}] ${rs.getString("title")}:\n${rs.getString("content")}"
+        val content = rs.getString("content")
+        if content != "NO_MEDICAL_CONTENT" then
+          val date = rs.getString("created_at").take(10)
+          buf += s"[${date}] ${rs.getString("title")}:\n${content}"
       buf.mkString("\n\n---\n\n")
     }
 

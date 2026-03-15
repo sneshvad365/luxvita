@@ -12,6 +12,7 @@ module.exports = configure(function (/* ctx */) {
     extras: ['roboto-font', 'material-icons'],
 
     build: {
+      publicPath: '/luxvita/',
       target: {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
         node: 'node20',

@@ -3,11 +3,17 @@ const httpProxy = require('/tmp/node_modules/http-proxy')
 const fs        = require('fs')
 const path      = require('path')
 
-const FRONTEND_DIR = path.join(__dirname, 'frontend/dist/pwa')
-const BACKEND      = 'http://localhost:8080'
-const PORT         = 9001
+const PORT = 9001
 
-const proxy = httpProxy.createProxyServer({})
+const APPS = [
+  {
+    prefix:   '/luxvita',
+    frontend: path.join(__dirname, 'frontend/dist/pwa'),
+    backend:  'http://localhost:8080',
+  },
+  // Add future apps here:
+  // { prefix: '/otherapp', frontend: path.join(__dirname, 'otherapp/dist'), backend: 'http://localhost:9002' },
+]
 
 const MIME = {
   '.html': 'text/html', '.js': 'application/javascript',
@@ -18,20 +24,44 @@ const MIME = {
   '.webmanifest': 'application/manifest+json',
 }
 
+const proxy = httpProxy.createProxyServer({})
+
 http.createServer((req, res) => {
-  if (req.url.startsWith('/api/')) {
-    return proxy.web(req, res, { target: BACKEND }, (e) => {
+  const url = req.url
+
+  // Redirect root to first app
+  if (url === '/' || url === '') {
+    res.writeHead(302, { Location: APPS[0].prefix })
+    return res.end()
+  }
+
+  // Find matching app by prefix
+  const app = APPS.find(a => url === a.prefix || url.startsWith(a.prefix + '/'))
+  if (!app) {
+    res.writeHead(404)
+    return res.end('Not found')
+  }
+
+  // Strip prefix from URL for downstream routing
+  const stripped = url.slice(app.prefix.length) || '/'
+
+  // API: proxy to backend (with prefix stripped)
+  if (stripped.startsWith('/api/')) {
+    req.url = stripped
+    return proxy.web(req, res, { target: app.backend }, (e) => {
       res.writeHead(502); res.end('Backend unavailable: ' + e.message)
     })
   }
 
-  let filePath = path.join(FRONTEND_DIR, req.url.split('?')[0])
+  // Static files: serve from frontend dir, fallback to index.html
+  let filePath = path.join(app.frontend, stripped.split('?')[0])
   if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    filePath = path.join(FRONTEND_DIR, 'index.html')
+    filePath = path.join(app.frontend, 'index.html')
   }
 
   const ext  = path.extname(filePath)
   const mime = MIME[ext] || 'application/octet-stream'
   res.writeHead(200, { 'Content-Type': mime })
   fs.createReadStream(filePath).pipe(res)
+
 }).listen(PORT, () => console.log(`Proxy on http://localhost:${PORT}`))

@@ -53,8 +53,9 @@ object ClaudeService:
     val responseText = callClaude(systemMsg = insightSystem, content = ujsonTextContent(prompt))
     parseInsight(responseText)
 
-  /** Returns (extractedContent, detectedDocumentDate) where date is ISO YYYY-MM-DD or None */
-  def extractMedicalText(title: String, pdfBase64: String): (String, Option[String]) =
+  /** Returns (extractedContent, detectedDocumentDate) where date is ISO YYYY-MM-DD or None.
+   *  mediaType must be "application/pdf" or "image/jpeg". */
+  def extractMedicalText(title: String, fileBase64: String, mediaType: String): (String, Option[String]) =
     val prompt = s"""This is a medical document titled "$title".
 
       |1. Identify the document date (test date, collection date, report date, or visit date — whichever is most relevant). Format as YYYY-MM-DD.
@@ -62,27 +63,39 @@ object ClaudeService:
       |   Include: test results and reference ranges, diagnoses, medications, measurements, dates, doctor notes, recommendations.
       |   Omit: administrative info, patient address, billing codes.
       |   Format as readable paragraphs with clear section headings.
+      |   If the document contains no clinically relevant health or medical information, set content to exactly: "NO_MEDICAL_CONTENT"
 
       |Return ONLY valid JSON:
-      |{ "document_date": "YYYY-MM-DD"|null, "content": "full extracted text..." }""".stripMargin
-    val content = ujson.Arr(
-      ujson.Obj(
-        "type"   -> "document",
-        "source" -> ujson.Obj(
-          "type"       -> "base64",
-          "media_type" -> "application/pdf",
-          "data"       -> pdfBase64,
-        ),
-      ),
-      ujson.Obj("type" -> "text", "text" -> prompt),
-    )
+      |{ "document_date": "YYYY-MM-DD"|null, "content": "full extracted text or NO_MEDICAL_CONTENT" }""".stripMargin
+    val fileBlock =
+      if mediaType == "application/pdf" then
+        ujson.Obj(
+          "type"   -> "document",
+          "source" -> ujson.Obj(
+            "type"       -> "base64",
+            "media_type" -> "application/pdf",
+            "data"       -> fileBase64,
+          ),
+        )
+      else
+        ujson.Obj(
+          "type"   -> "image",
+          "source" -> ujson.Obj(
+            "type"       -> "base64",
+            "media_type" -> mediaType,
+            "data"       -> fileBase64,
+          ),
+        )
+    val content = ujson.Arr(fileBlock, ujson.Obj("type" -> "text", "text" -> prompt))
     val responseText = callClaude(
-      systemMsg = "You are a medical data extractor. Return ONLY valid JSON.",
-      content   = content,
+      systemMsg  = "You are a medical data extractor. Return ONLY valid JSON.",
+      content    = content,
+      maxTokens  = 4096,
+      timeoutSec = 60,
     )
-    val json        = ujson.read(stripMarkdown(responseText))
-    val extracted   = json("content").str
-    val dateOpt     = json.obj.get("document_date").flatMap(v => if v.isNull then None else Some(v.str))
+    val json      = ujson.read(stripMarkdown(responseText))
+    val extracted = json("content").str
+    val dateOpt   = json.obj.get("document_date").flatMap(v => if v.isNull then None else Some(v.str))
     (extracted, dateOpt)
 
   def dailyInsightChat(
@@ -244,28 +257,37 @@ object ClaudeService:
   private def ujsonTextContent(text: String): ujson.Value =
     ujson.Arr(ujson.Obj("type" -> "text", "text" -> text))
 
-  private def callClaude(systemMsg: String, content: ujson.Value): String =
+  private def callClaude(
+    systemMsg  : String,
+    content    : ujson.Value,
+    maxTokens  : Int = 1024,
+    betas      : List[String] = Nil,
+    timeoutSec : Int = 30,
+  ): String =
     val body = ujson.Obj(
       "model"      -> model,
-      "max_tokens" -> 1024,
+      "max_tokens" -> maxTokens,
       "system"     -> systemMsg,
       "messages"   -> ujson.Arr(
         ujson.Obj("role" -> "user", "content" -> content)
       ),
     )
 
-    val request = jhttp.HttpRequest.newBuilder()
+    val builder = jhttp.HttpRequest.newBuilder()
       .uri(URI.create(apiUrl))
       .header("Content-Type",      "application/json")
       .header("x-api-key",         apiKey)
       .header("anthropic-version", "2023-06-01")
+    if betas.nonEmpty then
+      builder.header("anthropic-beta", betas.mkString(","))
+    val request = builder
       .POST(BodyPublishers.ofString(ujson.write(body)))
-      .timeout(Duration.ofSeconds(30))
+      .timeout(Duration.ofSeconds(timeoutSec))
       .build()
 
     val response = httpClient.send(request, jhttp.HttpResponse.BodyHandlers.ofString())
     if response.statusCode() != 200 then
-      throw RuntimeException(s"Claude API error ${response.statusCode()}")
+      throw RuntimeException(s"Claude API error ${response.statusCode()}: ${response.body().take(300)}")
 
     val json = ujson.read(response.body())
     json("content")(0)("text").str
