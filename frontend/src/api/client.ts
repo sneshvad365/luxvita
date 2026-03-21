@@ -38,13 +38,14 @@ export interface AuthResponse {
 }
 
 export interface MacroEstimate {
-  kcal:        number
-  proteinG:    number
-  carbsG:      number
-  fatG:        number
-  fiberG:      number
-  description: string
-  waterMl:     number | null
+  kcal:          number
+  proteinG:      number
+  carbsG:        number
+  fatG:          number
+  saturatedFatG: number | null
+  fiberG:        number
+  description:   string
+  waterMl:       number | null
 }
 
 export interface BreakdownItem {
@@ -80,11 +81,12 @@ export async function fetchMealPhoto(mealId: string): Promise<MealPhotoResponse>
 }
 
 export interface Macros {
-  kcal:     number
-  proteinG: number
-  carbsG:   number
-  fatG:     number
-  fiberG:   number
+  kcal:          number
+  proteinG:      number
+  carbsG:        number
+  fatG:          number
+  saturatedFatG: number
+  fiberG:        number
 }
 
 export interface TodayResponse {
@@ -130,8 +132,9 @@ export interface UserProfile {
   targetProteinG: number
   targetCarbsG:   number
   targetFatG:     number
-  targetFiberG:   number
-  targetWaterL:   number
+  targetFiberG:        number
+  targetSaturatedFatG: number
+  targetWaterL:        number
   baseWeightKg:   number | null
   goalWeightKg:   number | null
   updatedAt:      string
