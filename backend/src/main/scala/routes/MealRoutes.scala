@@ -20,11 +20,12 @@ object MealRoutes extends BaseRoutes:
         else
           val profile    = AggregateService.getProfileOrDefault(userId)
           val targets    = Macros(
-            kcal     = profile.targetKcal,
-            proteinG = profile.targetProteinG.toDouble,
-            carbsG   = profile.targetCarbsG.toDouble,
-            fatG     = profile.targetFatG.toDouble,
-            fiberG   = profile.targetFiberG.toDouble,
+            kcal          = profile.targetKcal,
+            proteinG      = profile.targetProteinG.toDouble,
+            carbsG        = profile.targetCarbsG.toDouble,
+            fatG          = profile.targetFatG.toDouble,
+            saturatedFatG = profile.targetSaturatedFatG.toDouble,
+            fiberG        = profile.targetFiberG.toDouble,
           )
           val todayMacros = AggregateService.getTodayMacros(userId)
           val estimate    = ClaudeService.estimateMealMacros(description, photo, targets, todayMacros)

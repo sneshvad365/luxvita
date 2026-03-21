@@ -15,8 +15,8 @@ object AggregateService:
       val st = conn.prepareStatement(
         """SELECT id, user_id, bio, goal,
           |  target_kcal, target_protein_g, target_carbs_g, target_fat_g,
-          |  target_fiber_g, target_water_l, base_weight_kg, goal_weight_kg,
-          |  updated_at
+          |  target_fiber_g, target_saturated_fat_g, target_water_l,
+          |  base_weight_kg, goal_weight_kg, updated_at
           |FROM user_profile WHERE user_id = ?::uuid""".stripMargin
       )
       st.setString(1, userId)
@@ -35,8 +35,9 @@ object AggregateService:
         targetProteinG = 150,
         targetCarbsG   = 200,
         targetFatG     = 70,
-        targetFiberG   = 25,
-        targetWaterL   = 2.5,
+        targetFiberG        = 25,
+        targetSaturatedFatG = 20,
+        targetWaterL        = 2.5,
         baseWeightKg   = None,
         goalWeightKg   = None,
         updatedAt      = "",
@@ -50,11 +51,12 @@ object AggregateService:
   def getMacrosForDate(userId: String, date: String): Macros =
     Database.withConnection { conn =>
       val st = conn.prepareStatement(
-        """SELECT COALESCE(SUM(kcal), 0)::int          AS kcal,
-          |       COALESCE(SUM(protein_g), 0)::float8   AS protein_g,
-          |       COALESCE(SUM(carbs_g), 0)::float8     AS carbs_g,
-          |       COALESCE(SUM(fat_g), 0)::float8       AS fat_g,
-          |       COALESCE(SUM(fiber_g), 0)::float8     AS fiber_g
+        """SELECT COALESCE(SUM(kcal), 0)::int                    AS kcal,
+          |       COALESCE(SUM(protein_g), 0)::float8             AS protein_g,
+          |       COALESCE(SUM(carbs_g), 0)::float8               AS carbs_g,
+          |       COALESCE(SUM(fat_g), 0)::float8                 AS fat_g,
+          |       COALESCE(SUM(saturated_fat_g), 0)::float8       AS saturated_fat_g,
+          |       COALESCE(SUM(fiber_g), 0)::float8               AS fiber_g
           |FROM meals
           |WHERE user_id = ?::uuid
           |  AND logged_at >= ?::date
@@ -66,11 +68,12 @@ object AggregateService:
       val rs = st.executeQuery()
       rs.next()
       Macros(
-        kcal     = rs.getInt("kcal"),
-        proteinG = rs.getDouble("protein_g"),
-        carbsG   = rs.getDouble("carbs_g"),
-        fatG     = rs.getDouble("fat_g"),
-        fiberG   = rs.getDouble("fiber_g"),
+        kcal           = rs.getInt("kcal"),
+        proteinG       = rs.getDouble("protein_g"),
+        carbsG         = rs.getDouble("carbs_g"),
+        fatG           = rs.getDouble("fat_g"),
+        saturatedFatG  = rs.getDouble("saturated_fat_g"),
+        fiberG         = rs.getDouble("fiber_g"),
       )
     }
 
@@ -95,11 +98,12 @@ object AggregateService:
   def getTodayMacros(userId: String): Macros =
     Database.withConnection { conn =>
       val st = conn.prepareStatement(
-        """SELECT COALESCE(SUM(kcal), 0)::int          AS kcal,
-          |       COALESCE(SUM(protein_g), 0)::float8   AS protein_g,
-          |       COALESCE(SUM(carbs_g), 0)::float8     AS carbs_g,
-          |       COALESCE(SUM(fat_g), 0)::float8       AS fat_g,
-          |       COALESCE(SUM(fiber_g), 0)::float8     AS fiber_g
+        """SELECT COALESCE(SUM(kcal), 0)::int                    AS kcal,
+          |       COALESCE(SUM(protein_g), 0)::float8             AS protein_g,
+          |       COALESCE(SUM(carbs_g), 0)::float8               AS carbs_g,
+          |       COALESCE(SUM(fat_g), 0)::float8                 AS fat_g,
+          |       COALESCE(SUM(saturated_fat_g), 0)::float8       AS saturated_fat_g,
+          |       COALESCE(SUM(fiber_g), 0)::float8               AS fiber_g
           |FROM meals
           |WHERE user_id = ?::uuid
           |  AND logged_at >= date_trunc('day', now() AT TIME ZONE 'UTC')""".stripMargin
@@ -108,11 +112,12 @@ object AggregateService:
       val rs = st.executeQuery()
       rs.next()
       Macros(
-        kcal     = rs.getInt("kcal"),
-        proteinG = rs.getDouble("protein_g"),
-        carbsG   = rs.getDouble("carbs_g"),
-        fatG     = rs.getDouble("fat_g"),
-        fiberG   = rs.getDouble("fiber_g"),
+        kcal          = rs.getInt("kcal"),
+        proteinG      = rs.getDouble("protein_g"),
+        carbsG        = rs.getDouble("carbs_g"),
+        fatG          = rs.getDouble("fat_g"),
+        saturatedFatG = rs.getDouble("saturated_fat_g"),
+        fiberG        = rs.getDouble("fiber_g"),
       )
     }
 
@@ -125,21 +130,23 @@ object AggregateService:
       val st = conn.prepareStatement(
         """WITH daily AS (
           |  SELECT date_trunc('day', logged_at AT TIME ZONE 'UTC') AS day,
-          |         COALESCE(SUM(kcal), 0)::float8        AS kcal,
-          |         COALESCE(SUM(protein_g), 0)::float8   AS protein_g,
-          |         COALESCE(SUM(carbs_g), 0)::float8     AS carbs_g,
-          |         COALESCE(SUM(fat_g), 0)::float8       AS fat_g,
-          |         COALESCE(SUM(fiber_g), 0)::float8     AS fiber_g
+          |         COALESCE(SUM(kcal), 0)::float8                AS kcal,
+          |         COALESCE(SUM(protein_g), 0)::float8           AS protein_g,
+          |         COALESCE(SUM(carbs_g), 0)::float8             AS carbs_g,
+          |         COALESCE(SUM(fat_g), 0)::float8               AS fat_g,
+          |         COALESCE(SUM(saturated_fat_g), 0)::float8     AS saturated_fat_g,
+          |         COALESCE(SUM(fiber_g), 0)::float8             AS fiber_g
           |  FROM meals
           |  WHERE user_id = ?::uuid
           |    AND logged_at >= now() - ? * INTERVAL '1 day'
           |  GROUP BY day
           |)
-          |SELECT COALESCE(AVG(kcal), 0)::float8      AS kcal,
-          |       COALESCE(AVG(protein_g), 0)::float8 AS protein_g,
-          |       COALESCE(AVG(carbs_g), 0)::float8   AS carbs_g,
-          |       COALESCE(AVG(fat_g), 0)::float8     AS fat_g,
-          |       COALESCE(AVG(fiber_g), 0)::float8   AS fiber_g
+          |SELECT COALESCE(AVG(kcal), 0)::float8              AS kcal,
+          |       COALESCE(AVG(protein_g), 0)::float8         AS protein_g,
+          |       COALESCE(AVG(carbs_g), 0)::float8           AS carbs_g,
+          |       COALESCE(AVG(fat_g), 0)::float8             AS fat_g,
+          |       COALESCE(AVG(saturated_fat_g), 0)::float8   AS saturated_fat_g,
+          |       COALESCE(AVG(fiber_g), 0)::float8           AS fiber_g
           |FROM daily""".stripMargin
       )
       st.setString(1, userId)
@@ -147,11 +154,12 @@ object AggregateService:
       val rs = st.executeQuery()
       rs.next()
       Macros(
-        kcal     = rs.getDouble("kcal").toInt,
-        proteinG = rs.getDouble("protein_g"),
-        carbsG   = rs.getDouble("carbs_g"),
-        fatG     = rs.getDouble("fat_g"),
-        fiberG   = rs.getDouble("fiber_g"),
+        kcal          = rs.getDouble("kcal").toInt,
+        proteinG      = rs.getDouble("protein_g"),
+        carbsG        = rs.getDouble("carbs_g"),
+        fatG          = rs.getDouble("fat_g"),
+        saturatedFatG = rs.getDouble("saturated_fat_g"),
+        fiberG        = rs.getDouble("fiber_g"),
       )
     }
 
@@ -338,8 +346,9 @@ object AggregateService:
     val targetProteinG = rs.getInt("target_protein_g")
     val targetCarbsG   = rs.getInt("target_carbs_g")
     val targetFatG     = rs.getInt("target_fat_g")
-    val targetFiberG   = rs.getInt("target_fiber_g")
-    val targetWaterL   = rs.getDouble("target_water_l")
+    val targetFiberG        = rs.getInt("target_fiber_g")
+    val targetSaturatedFatG = rs.getInt("target_saturated_fat_g")
+    val targetWaterL        = rs.getDouble("target_water_l")
     val baseWeightRaw  = rs.getDouble("base_weight_kg")
     val baseWeightOpt  = if rs.wasNull() then None else Some(baseWeightRaw)
     val goalWeightRaw  = rs.getDouble("goal_weight_kg")
@@ -353,9 +362,10 @@ object AggregateService:
       targetKcal     = targetKcal,
       targetProteinG = targetProteinG,
       targetCarbsG   = targetCarbsG,
-      targetFatG     = targetFatG,
-      targetFiberG   = targetFiberG,
-      targetWaterL   = targetWaterL,
+      targetFatG          = targetFatG,
+      targetFiberG        = targetFiberG,
+      targetSaturatedFatG = targetSaturatedFatG,
+      targetWaterL        = targetWaterL,
       baseWeightKg   = baseWeightOpt,
       goalWeightKg   = goalWeightOpt,
       updatedAt      = updatedAt,

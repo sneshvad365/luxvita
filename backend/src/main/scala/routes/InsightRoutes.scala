@@ -32,11 +32,12 @@ object InsightRoutes extends BaseRoutes:
         else
           val profile        = AggregateService.getProfileOrDefault(userId)
           val targets        = models.Macros(
-            kcal     = profile.targetKcal,
-            proteinG = profile.targetProteinG.toDouble,
-            carbsG   = profile.targetCarbsG.toDouble,
-            fatG     = profile.targetFatG.toDouble,
-            fiberG   = profile.targetFiberG.toDouble,
+            kcal          = profile.targetKcal,
+            proteinG      = profile.targetProteinG.toDouble,
+            carbsG        = profile.targetCarbsG.toDouble,
+            fatG          = profile.targetFatG.toDouble,
+            saturatedFatG = profile.targetSaturatedFatG.toDouble,
+            fiberG        = profile.targetFiberG.toDouble,
           )
           val todayMacros    = AggregateService.getMacrosForDate(userId, resolvedDate)
           val activityStr    = AggregateService.getActivityStringForDate(userId, resolvedDate)
@@ -128,11 +129,12 @@ object InsightRoutes extends BaseRoutes:
           .filter(_.nonEmpty).getOrElse(todayStr)
         val profile        = AggregateService.getProfileOrDefault(userId)
         val targets        = models.Macros(
-          kcal     = profile.targetKcal,
-          proteinG = profile.targetProteinG.toDouble,
-          carbsG   = profile.targetCarbsG.toDouble,
-          fatG     = profile.targetFatG.toDouble,
-          fiberG   = profile.targetFiberG.toDouble,
+          kcal          = profile.targetKcal,
+          proteinG      = profile.targetProteinG.toDouble,
+          carbsG        = profile.targetCarbsG.toDouble,
+          fatG          = profile.targetFatG.toDouble,
+          saturatedFatG = profile.targetSaturatedFatG.toDouble,
+          fiberG        = profile.targetFiberG.toDouble,
         )
         val todayMacros    = AggregateService.getMacrosForDate(userId, dateStr)
         val activityStr    = AggregateService.getActivityStringForDate(userId, dateStr)
@@ -165,11 +167,12 @@ object InsightRoutes extends BaseRoutes:
     if !alreadyExists then
       val profile      = AggregateService.getProfileOrDefault(userId)
       val targets      = models.Macros(
-        kcal     = profile.targetKcal,
-        proteinG = profile.targetProteinG.toDouble,
-        carbsG   = profile.targetCarbsG.toDouble,
-        fatG     = profile.targetFatG.toDouble,
-        fiberG   = profile.targetFiberG.toDouble,
+        kcal          = profile.targetKcal,
+        proteinG      = profile.targetProteinG.toDouble,
+        carbsG        = profile.targetCarbsG.toDouble,
+        fatG          = profile.targetFatG.toDouble,
+        saturatedFatG = profile.targetSaturatedFatG.toDouble,
+        fiberG        = profile.targetFiberG.toDouble,
       )
       val thirtyDayAvg   = AggregateService.getNDayAvgMacros(userId, 30)
       val (kcalC, protC, fibC) = AggregateService.consistencyScores(userId, profile)
