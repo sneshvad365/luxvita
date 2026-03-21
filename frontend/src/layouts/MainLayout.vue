@@ -42,4 +42,8 @@ const activeTab = ref('today')
   min-width: 0 !important;
   padding: 0 4px !important;
 }
+/* Keep footer fixed regardless of any app.scss z-index stacking tricks */
+.q-footer {
+  position: fixed !important;
+}
 </style>
