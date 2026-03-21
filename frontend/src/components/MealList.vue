@@ -113,7 +113,7 @@
   </q-dialog>
 
   <!-- Photo viewer dialog -->
-  <q-dialog :model-value="!!photoMeal" @update:model-value="v => { if (!v) { photoMeal.value = null; photoData.value = null } }">
+  <q-dialog :model-value="!!photoMeal" @update:model-value="v => { if (!v) { photoMeal.value = null; photoData.value = null; photoError.value = false } }">
     <q-card style="min-width:300px;max-width:500px">
       <q-card-section class="q-pb-none">
         <div class="text-subtitle2 text-weight-bold">
