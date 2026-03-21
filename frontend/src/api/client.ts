@@ -70,6 +70,15 @@ export interface Meal {
   breakdown:   BreakdownItem[]
 }
 
+export interface MealPhotoResponse {
+  photoData: string
+}
+
+export async function fetchMealPhoto(mealId: string): Promise<MealPhotoResponse> {
+  const res = await api.get<MealPhotoResponse>(`/api/meals/${mealId}/photo`)
+  return res.data
+}
+
 export interface Macros {
   kcal:     number
   proteinG: number
