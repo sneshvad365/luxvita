@@ -292,4 +292,26 @@ object MealRoutes extends BaseRoutes:
           err("SERVER_ERROR", e.getMessage, 500)
     }
 
+  @cask.get("/api/meals/:id/photo")
+  def getMealPhoto(id: String, request: cask.Request): cask.Response[String] =
+    withAuth(request) { userId =>
+      try
+        val result: Option[Option[String]] = Database.withConnection { conn =>
+          val st = conn.prepareStatement(
+            "SELECT photo_data FROM meals WHERE id = ?::uuid AND user_id = ?::uuid"
+          )
+          st.setString(1, id)
+          st.setString(2, userId)
+          val rs = st.executeQuery()
+          if rs.next() then Some(Option(rs.getString("photo_data")))
+          else None
+        }
+        result match
+          case None             => err("NOT_FOUND", "Meal not found", 404)
+          case Some(None)       => err("NOT_FOUND", "No photo for this meal", 404)
+          case Some(Some(data)) => ok(ujson.Obj("photoData" -> data))
+      catch
+        case e: Exception => err("SERVER_ERROR", e.getMessage, 500)
+    }
+
   initialize()
