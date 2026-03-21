@@ -65,6 +65,7 @@
             <q-chip dense color="blue-2"   text-color="blue-9">P {{ log.pendingEstimate.proteinG.toFixed(1) }}g</q-chip>
             <q-chip dense color="amber-2"  text-color="amber-9">C {{ log.pendingEstimate.carbsG.toFixed(1) }}g</q-chip>
             <q-chip dense color="red-2"    text-color="red-9">F {{ log.pendingEstimate.fatG.toFixed(1) }}g</q-chip>
+            <q-chip v-if="log.pendingEstimate.saturatedFatG != null" dense color="pink-2" text-color="pink-9">SF {{ log.pendingEstimate.saturatedFatG!.toFixed(1) }}g</q-chip>
             <q-chip dense color="green-2"  text-color="green-9">Fi {{ log.pendingEstimate.fiberG.toFixed(1) }}g</q-chip>
           </div>
         </q-card-section>
