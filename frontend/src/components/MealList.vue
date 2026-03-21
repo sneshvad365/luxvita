@@ -30,6 +30,7 @@
             <q-item-section side>
               <div class="column">
                 <q-btn flat round dense icon="content_copy" size="sm" color="grey-6" @click.stop="emit('copy', meal.id)" />
+                <q-btn v-if="meal.hasPhoto" flat round dense icon="photo_camera" size="sm" color="grey-6" @click.stop="openPhoto(meal)" />
                 <template v-if="!readonly">
                   <q-btn flat round dense icon="edit"   size="sm" color="grey-6" @click.stop="startEdit(meal)" />
                   <q-btn flat round dense icon="delete" size="sm" color="red-4"  @click.stop="remove(meal.id)" />
@@ -110,12 +111,43 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <!-- Photo viewer dialog -->
+  <q-dialog :model-value="!!photoMeal" @update:model-value="v => { if (!v) { photoMeal.value = null; photoData.value = null } }">
+    <q-card style="min-width:300px;max-width:500px">
+      <q-card-section class="q-pb-none">
+        <div class="text-subtitle2 text-weight-bold">
+          {{ photoMeal?.description ?? 'Meal photo' }}
+        </div>
+        <div class="text-caption text-grey-6">{{ photoMeal ? formatTime(photoMeal.loggedAt) : '' }}</div>
+      </q-card-section>
+
+      <q-card-section>
+        <div v-if="photoLoading" class="flex flex-center q-py-lg">
+          <q-spinner size="40px" color="primary" />
+        </div>
+        <div v-else-if="photoError" class="text-grey-5 text-center q-py-md">
+          Photo not available
+        </div>
+        <img
+          v-else-if="photoData"
+          :src="'data:image/jpeg;base64,' + photoData"
+          style="width:100%;border-radius:8px"
+        />
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn flat label="Close" color="grey-6" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import api from 'src/api/client'
 import type { Meal } from 'src/api/client'
+import { fetchMealPhoto } from 'src/api/client'
 
 defineProps<{ meals: Meal[]; loading: boolean; readonly?: boolean }>()
 const emit = defineEmits<{ refresh: []; copy: [mealId: string] }>()
@@ -124,6 +156,25 @@ const editingId       = ref<string | null>(null)
 const saving          = ref(false)
 const form            = reactive({ description: '', kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 })
 const breakdownMeal   = ref<Meal | null>(null)
+const photoMeal    = ref<Meal | null>(null)
+const photoData    = ref<string | null>(null)
+const photoLoading = ref(false)
+const photoError   = ref(false)
+
+async function openPhoto(meal: Meal) {
+  photoMeal.value    = meal
+  photoData.value    = null
+  photoError.value   = false
+  photoLoading.value = true
+  try {
+    const res = await fetchMealPhoto(meal.id)
+    photoData.value = res.photoData
+  } catch {
+    photoError.value = true
+  } finally {
+    photoLoading.value = false
+  }
+}
 
 function startEdit(meal: Meal) {
   editingId.value    = meal.id
