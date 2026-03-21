@@ -29,11 +29,15 @@ Replace Quasar's default blue Material palette with the Mullerthal earthy/organi
 | `--text-mid` | `#5c5440` | Secondary text |
 | `--text-light` | `#8c8068` | Muted/caption text |
 
-Quasar's brand variables are overridden to map onto this palette:
+Quasar's brand variables are overridden to map onto this palette (set in `:root` in `app.scss`):
 - `--q-primary: #3d4a2e`
 - `--q-secondary: #7a9160`
 - `--q-accent: #c4b89a`
 - `--q-dark: #2a2618`
+- `--q-positive: #7a9160` (fern — replaces default green)
+- `--q-negative: #c4856a` (warm terracotta — replaces default red)
+- `--q-warning: #c4b89a` (stone — replaces default amber)
+- `--q-info: #5a6b42` (moss-light — replaces default blue)
 
 ## Typography
 
@@ -50,9 +54,14 @@ Remove `roboto-font` from the `extras` array in `quasar.config.js` (Jost replace
 
 ## Page Background
 
-Applied to `body` in `app.scss`:
+Applied in `app.scss`:
 
 ```scss
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--cream);
   color: var(--text-dark);
@@ -78,14 +87,21 @@ body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: url("data:image/svg+xml,..."); // same SVG noise as reference
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
   opacity: 0.4;
   pointer-events: none;
   z-index: 0;
 }
+
+// Lift page content above fixed pseudo-element overlays
+// Scoped to avoid breaking Quasar's fixed-position portals (dialogs, drawers, menus, tooltips)
+#q-app, #q-app * {
+  position: relative;
+  z-index: 1;
+}
 ```
 
-All page content must sit above these overlays. Quasar's `#q-app` and `body > *` get `position: relative; z-index: 1`.
+**Important:** Do NOT apply `position: relative` to `body` or use a blanket `*` selector. Quasar's `q-dialog`, `q-drawer`, `q-menu`, and `q-tooltip` components render via `document.body` and rely on `position: fixed` with an unrestricted stacking context. Scoping to `#q-app` is sufficient — the pseudo-elements are on `body` at `z-index: 0`, and `#q-app` at `z-index: 1` lifts all app content above them.
 
 ## Global Component Overrides (app.scss)
 
@@ -102,7 +118,12 @@ These target Quasar's generated CSS classes globally:
 ```
 
 ### Header / Toolbar
-The existing `bg-primary` class on `<q-header>` will automatically use the new `--q-primary` moss color. No additional override needed.
+The existing `bg-primary` class on `<q-header>` will automatically use the new `--q-primary` moss color. Add a subtle bottom border:
+```scss
+.q-header {
+  border-bottom: 1px solid rgba(168, 184, 153, 0.3); // --sage at 0.3 opacity
+}
+```
 
 ### Bottom nav tabs
 ```scss
@@ -123,6 +144,33 @@ The existing `bg-primary` class on `<q-header>` will automatically use the new `
 }
 ```
 
+Filled buttons (`q-btn[color="primary"]`) automatically use white text via Quasar's built-in contrast logic against the dark moss background. No additional text color override needed.
+
+### Insight card
+`InsightCard.vue`'s root element is `<q-card :class="`bg-${color}-1`">` — it has no static class. Add `class="insight-card"` to that element so `app.scss` can target it:
+
+```html
+<!-- InsightCard.vue line 2 — change from: -->
+<q-card :class="`bg-${color}-1`">
+<!-- to: -->
+<q-card class="insight-card" :class="`bg-${color}-1`">
+```
+
+Then in `app.scss`:
+```scss
+.insight-card {
+  background: var(--moss) !important;
+  border-color: transparent !important;
+  color: var(--cream);
+}
+.insight-card .text-body2 {
+  color: var(--sandstone) !important;
+}
+.insight-card .text-caption {
+  color: var(--sage) !important;
+}
+```
+
 ### Input fields
 ```scss
 .q-field__label {
@@ -140,7 +188,7 @@ The existing `bg-primary` class on `<q-header>` will automatically use the new `
 
 ## PWA Manifest (quasar.config.js)
 
-Update `background_color` and `theme_color` in the PWA manifest to match:
+Update `pwa.manifest.background_color` and `pwa.manifest.theme_color`:
 - `background_color`: `#f5f0e8` (cream)
 - `theme_color`: `#3d4a2e` (moss)
 
@@ -151,6 +199,7 @@ Update `background_color` and `theme_color` in the PWA manifest to match:
 | `frontend/index.html` | Add Google Fonts `<link>` tag |
 | `frontend/quasar.config.js` | Remove `roboto-font` from extras; update PWA `background_color`/`theme_color` |
 | `frontend/src/css/app.scss` | All color variables, body styles, background texture, global component overrides |
+| `frontend/src/components/InsightCard.vue` | Add `class="insight-card"` to root `<q-card>` (one-line template addition) |
 
 ## Out of Scope
 
