@@ -1,5 +1,5 @@
 <template>
-  <q-card class="insight-card" :class="`bg-${color}-1`">
+  <q-card :class="`bg-${color}-1`">
     <q-card-section class="row items-start q-gutter-sm">
       <q-icon :name="icon" :color="`${color}-8`" size="sm" class="q-mt-xs" />
       <div class="col">
