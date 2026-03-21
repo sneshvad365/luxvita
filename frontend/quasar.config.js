@@ -9,7 +9,7 @@ module.exports = configure(function (/* ctx */) {
 
     css: ['app.scss'],
 
-    extras: ['roboto-font', 'material-icons'],
+    extras: ['material-icons'],
 
     build: {
       publicPath: '/luxvita/',
@@ -45,8 +45,8 @@ module.exports = configure(function (/* ctx */) {
         short_name: 'LuxVita',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#ffffff',
-        theme_color: '#1976D2',
+        background_color: '#f5f0e8',
+        theme_color: '#3d4a2e',
         icons: [
           { src: 'icons/icon-128x128.png', sizes: '128x128', type: 'image/png' },
           { src: 'icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
