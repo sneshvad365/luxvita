@@ -177,7 +177,7 @@ object ClaudeService:
        |${description.map(d => s"New meal: \"$d\"").getOrElse("Meal provided as photo only — estimate from the image.")}
        |
        |Return: {
-       |  "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float,
+       |  "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "saturated_fat_g": float, "fiber_g": float,
        |  "description": string,
        |  "water_ml": int|null,
        |  "breakdown": [{ "item": string, "kcal": int, "protein_g": float, "carbs_g": float, "fat_g": float, "fiber_g": float }, ...]
@@ -337,8 +337,9 @@ object ClaudeService:
       kcal        = json("kcal").num.toInt,
       proteinG    = json("protein_g").num,
       carbsG      = json("carbs_g").num,
-      fatG        = json("fat_g").num,
-      fiberG      = json("fiber_g").num,
+      fatG          = json("fat_g").num,
+      saturatedFatG = json.obj.get("saturated_fat_g").flatMap(v => if v.isNull then None else Some(v.num)),
+      fiberG        = json("fiber_g").num,
       description = json("description").str,
       waterMl     = json.obj.get("water_ml").flatMap(v => if v.isNull then None else Some(v.num.toInt)),
       breakdown   = breakdown,
