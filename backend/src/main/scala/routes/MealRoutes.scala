@@ -35,8 +35,8 @@ object MealRoutes extends BaseRoutes:
 
           val (mealId, loggedAt) = Database.withConnection { conn =>
             val st = conn.prepareStatement(
-              """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate, breakdown, photo_data)
-                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?)
+              """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate, breakdown, photo_data, saturated_fat_g)
+                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?, ?)
                 |RETURNING id, logged_at""".stripMargin
             )
             st.setString(1, userId)
@@ -55,6 +55,9 @@ object MealRoutes extends BaseRoutes:
             photo match
               case Some(p) => st.setString(11, p)
               case None    => st.setNull(11, java.sql.Types.VARCHAR)
+            estimate.saturatedFatG match
+              case Some(v) => st.setDouble(12, v)
+              case None    => st.setNull(12, java.sql.Types.NUMERIC)
             val rs = st.executeQuery()
             rs.next()
             (rs.getString("id"), rs.getString("logged_at"))
@@ -72,6 +75,7 @@ object MealRoutes extends BaseRoutes:
                 "proteinG"    -> estimate.proteinG,
                 "carbsG"      -> estimate.carbsG,
                 "fatG"        -> estimate.fatG,
+                "saturatedFatG" -> estimate.saturatedFatG.map(ujson.Num(_)).getOrElse(ujson.Null),
                 "fiberG"      -> estimate.fiberG,
               ),
               "estimate" -> ujson.Obj(
@@ -79,6 +83,7 @@ object MealRoutes extends BaseRoutes:
                 "proteinG"    -> estimate.proteinG,
                 "carbsG"      -> estimate.carbsG,
                 "fatG"        -> estimate.fatG,
+                "saturatedFatG" -> estimate.saturatedFatG.map(ujson.Num(_)).getOrElse(ujson.Null),
                 "fiberG"      -> estimate.fiberG,
                 "description" -> estimate.description,
                 "waterMl"     -> estimate.waterMl.map(ujson.Num(_)).getOrElse(ujson.Null),
@@ -101,7 +106,7 @@ object MealRoutes extends BaseRoutes:
 
         val source = Database.withConnection { conn =>
           val st = conn.prepareStatement(
-            """SELECT description, kcal, protein_g, carbs_g, fat_g, fiber_g, breakdown
+            """SELECT description, kcal, protein_g, carbs_g, fat_g, fiber_g, saturated_fat_g, breakdown
               |FROM meals WHERE id = ?::uuid AND user_id = ?::uuid""".stripMargin
           )
           st.setString(1, mealId)
@@ -114,18 +119,20 @@ object MealRoutes extends BaseRoutes:
             val carbsG    = rs.getDouble("carbs_g")
             val fatG      = rs.getDouble("fat_g")
             val fiberG    = rs.getDouble("fiber_g")
+            val satFatRaw = rs.getDouble("saturated_fat_g")
+            val satFatOpt = if rs.wasNull() then None else Some(satFatRaw)
             val breakdown = Option(rs.getString("breakdown"))
-            Some((desc, kcal, proteinG, carbsG, fatG, fiberG, breakdown))
+            Some((desc, kcal, proteinG, carbsG, fatG, fiberG, satFatOpt, breakdown))
           else None
         }
 
         source match
           case None => err("NOT_FOUND", "Meal not found", 404)
-          case Some((desc, kcal, proteinG, carbsG, fatG, fiberG, breakdown)) =>
+          case Some((desc, kcal, proteinG, carbsG, fatG, fiberG, satFatOpt, breakdown)) =>
             Database.withConnection { conn =>
               val st = conn.prepareStatement(
-                """INSERT INTO meals (user_id, description, kcal, protein_g, carbs_g, fat_g, fiber_g, breakdown)
-                  |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?::jsonb)
+                """INSERT INTO meals (user_id, description, kcal, protein_g, carbs_g, fat_g, fiber_g, saturated_fat_g, breakdown)
+                  |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
                   |RETURNING id""".stripMargin
               )
               st.setString(1, userId)
@@ -137,9 +144,12 @@ object MealRoutes extends BaseRoutes:
               st.setDouble(5, carbsG)
               st.setDouble(6, fatG)
               st.setDouble(7, fiberG)
+              satFatOpt match
+                case Some(v) => st.setDouble(8, v)
+                case None    => st.setNull(8, java.sql.Types.NUMERIC)
               breakdown match
-                case Some(b) => st.setString(8, b)
-                case None    => st.setNull(8, java.sql.Types.VARCHAR)
+                case Some(b) => st.setString(9, b)
+                case None    => st.setNull(9, java.sql.Types.VARCHAR)
               st.executeQuery().next()
             }
             val breakdownJson = breakdown.map(b => ujson.read(b)).getOrElse(ujson.Arr())
@@ -149,6 +159,7 @@ object MealRoutes extends BaseRoutes:
                 "proteinG"    -> proteinG,
                 "carbsG"      -> carbsG,
                 "fatG"        -> fatG,
+                "saturatedFatG" -> satFatOpt.map(ujson.Num(_)).getOrElse(ujson.Null),
                 "fiberG"      -> fiberG,
                 "description" -> desc.getOrElse("Copied meal"),
                 "waterMl"     -> ujson.Null,
@@ -169,11 +180,12 @@ object MealRoutes extends BaseRoutes:
         val proteinG    = body("proteinG").num
         val carbsG      = body("carbsG").num
         val fatG        = body("fatG").num
-        val fiberG      = body("fiberG").num
+        val fiberG        = body("fiberG").num
+        val saturatedFatG = body.obj.get("saturatedFatG").flatMap(v => if v.isNull then None else Some(v.num))
 
         val updated = Database.withConnection { conn =>
           val st = conn.prepareStatement(
-            """UPDATE meals SET description = ?, kcal = ?, protein_g = ?, carbs_g = ?, fat_g = ?, fiber_g = ?
+            """UPDATE meals SET description = ?, kcal = ?, protein_g = ?, carbs_g = ?, fat_g = ?, fiber_g = ?, saturated_fat_g = ?
               |WHERE id = ?::uuid AND user_id = ?::uuid
               |RETURNING id""".stripMargin
           )
@@ -185,8 +197,11 @@ object MealRoutes extends BaseRoutes:
           st.setDouble(4, carbsG)
           st.setDouble(5, fatG)
           st.setDouble(6, fiberG)
-          st.setString(7, id)
-          st.setString(8, userId)
+          saturatedFatG match
+            case Some(v) => st.setDouble(7, v)
+            case None    => st.setNull(7, java.sql.Types.NUMERIC)
+          st.setString(8, id)
+          st.setString(9, userId)
           st.executeQuery().next()
         }
         if updated then
@@ -197,6 +212,7 @@ object MealRoutes extends BaseRoutes:
             "proteinG"    -> proteinG,
             "carbsG"      -> carbsG,
             "fatG"        -> fatG,
+            "saturatedFatG" -> saturatedFatG.map(ujson.Num(_)).getOrElse(ujson.Null),
             "fiberG"      -> fiberG,
           ))
         else
@@ -233,7 +249,7 @@ object MealRoutes extends BaseRoutes:
           .getOrElse(java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString)
         val meals = Database.withConnection { conn =>
           val st = conn.prepareStatement(
-            """SELECT id, logged_at, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, breakdown
+            """SELECT id, logged_at, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, saturated_fat_g, breakdown
               |FROM meals
               |WHERE user_id = ?::uuid
               |  AND logged_at >= ?::date
@@ -256,6 +272,8 @@ object MealRoutes extends BaseRoutes:
             val fatOpt      = if rs.wasNull() then ujson.Null else ujson.Num(fatVal)
             val fiberVal    = rs.getDouble("fiber_g")
             val fiberOpt    = if rs.wasNull() then ujson.Null else ujson.Num(fiberVal)
+            val satFatVal   = rs.getDouble("saturated_fat_g")
+            val satFatOpt   = if rs.wasNull() then ujson.Null else ujson.Num(satFatVal)
             val descStr     = rs.getString("description")
             val descOpt     = if rs.wasNull() then ujson.Null else ujson.Str(descStr)
             val breakdownStr = rs.getString("breakdown")
@@ -269,6 +287,7 @@ object MealRoutes extends BaseRoutes:
               "proteinG"    -> proteinOpt,
               "carbsG"      -> carbsOpt,
               "fatG"        -> fatOpt,
+              "saturatedFatG" -> satFatOpt,
               "fiberG"      -> fiberOpt,
               "breakdown"   -> breakdownVal,
             )
@@ -284,6 +303,7 @@ object MealRoutes extends BaseRoutes:
             "proteinG" -> totals.proteinG,
             "carbsG"   -> totals.carbsG,
             "fatG"     -> totals.fatG,
+            "saturatedFatG" -> totals.saturatedFatG,
             "fiberG"   -> totals.fiberG,
           ),
         ))
