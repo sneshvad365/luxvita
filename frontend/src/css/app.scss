@@ -1,1 +1,168 @@
-// app global css / scss goes here
+/* ── LuxVita — Modern Health Theme ──────────────────────────────────────────
+ *  Clean red, white & blue palette with health/nutrition accents.
+ *  Inspired by modern wellness apps — light, breathable, confident.
+ * ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --red:         #D42B2B;
+  --red-soft:    #E85555;
+  --red-pale:    #FDF2F2;
+
+  --blue:        #1B4F8A;
+  --blue-mid:    #2563AA;
+  --blue-soft:   #4A90C4;
+  --blue-pale:   #EEF4FB;
+
+  --white:       #FFFFFF;
+  --off-white:   #F8FAFB;
+  --surface:     #FFFFFF;
+
+  --green-hint:  #3A8F5F;   /* subtle health/nutrition accent */
+  --green-pale:  #EDF7F2;
+
+  --border:      #E4EAF0;
+  --text-dark:   #12243A;
+  --text-mid:    #445568;
+  --text-light:  #8298AF;
+  --shadow:      rgba(18, 36, 58, 0.08);
+
+  /* Quasar brand */
+  --q-primary:   #1B4F8A;
+  --q-secondary: #D42B2B;
+  --q-accent:    #4A90C4;
+  --q-dark:      #12243A;
+  --q-positive:  #3A8F5F;
+  --q-negative:  #D42B2B;
+  --q-warning:   #E08A00;
+  --q-info:      #2563AA;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
+html { font-size: 16px; }
+
+body {
+  background: var(--off-white);
+  color: var(--text-dark);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Subtle background texture ───────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%,   rgba(27, 79, 138, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 100% 100%, rgba(212, 43, 43, 0.03) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#q-app { position: relative; z-index: 1; }
+
+/* ── Page ────────────────────────────────────────────────────────────────── */
+.q-page-container,
+.q-page {
+  background: transparent;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.q-header {
+  background: var(--blue) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08), 0 2px 12px rgba(18,36,58,0.18) !important;
+}
+
+.q-header .q-toolbar__title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+/* ── Bottom nav ──────────────────────────────────────────────────────────── */
+.q-footer .q-tabs {
+  background: var(--white);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px var(--shadow);
+}
+
+.q-footer .q-tab__label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.q-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 2px 16px var(--shadow);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.q-btn {
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.q-btn--flat { color: var(--blue); }
+
+/* ── Inputs ──────────────────────────────────────────────────────────────── */
+.q-field--outlined .q-field__control {
+  border-radius: 10px;
+}
+
+.q-field--outlined.q-field--focused .q-field__control {
+  border-color: var(--blue) !important;
+}
+
+.q-field__label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-mid);
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+.text-h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-dark);
+}
+
+.text-subtitle2 {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* ── Insight card ────────────────────────────────────────────────────────── */
+.insight-card {
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-mid) 100%) !important;
+  border-color: transparent !important;
+  color: #fff;
+}
+
+.insight-card .text-body2 {
+  color: rgba(255,255,255,0.88) !important;
+}
+
+.insight-card .text-caption {
+  color: rgba(255,255,255,0.58) !important;
+}
+
+/* ── Chips ───────────────────────────────────────────────────────────────── */
+.q-chip {
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+/* ── List items ──────────────────────────────────────────────────────────── */
+.q-item.q-item--active {
+  color: var(--blue) !important;
+}
+
+/* ── Positive/health green hint ──────────────────────────────────────────── */
+.text-positive { color: var(--green-hint) !important; }
+.bg-positive   { background: var(--green-pale) !important; color: var(--green-hint) !important; }

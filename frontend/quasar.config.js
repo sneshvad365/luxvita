@@ -45,8 +45,8 @@ module.exports = configure(function (/* ctx */) {
         short_name: 'LuxVita',
         display: 'standalone',
         orientation: 'portrait',
-        background_color: '#ffffff',
-        theme_color: '#1976D2',
+        background_color: '#F8FAFB',
+        theme_color: '#1B4F8A',
         icons: [
           { src: 'icons/icon-128x128.png', sizes: '128x128', type: 'image/png' },
           { src: 'icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
