@@ -23,5 +23,9 @@ case class UserProfile(
   targetWaterL  : Double,
   baseWeightKg  : Option[Double],
   goalWeightKg  : Option[Double],
+  sex           : Option[String],  // male | female
+  heightCm      : Option[Int],
+  birthDate     : Option[String],  // ISO date: YYYY-MM-DD
+  activityLevel : Option[String],  // sedentary | lightly_active | moderately_active | very_active | extra_active
   updatedAt     : String,
 ) derives ReadWriter

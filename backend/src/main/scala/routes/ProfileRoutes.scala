@@ -35,14 +35,19 @@ object ProfileRoutes extends BaseRoutes:
         val targetWater        = body("targetWaterL").num
         val baseWeight    = body.obj.get("baseWeightKg").flatMap(v => if v.isNull then None else Some(v.num))
         val goalWeight    = body.obj.get("goalWeightKg").flatMap(v => if v.isNull then None else Some(v.num))
+        val sex           = body.obj.get("sex").flatMap(v => if v.isNull then None else Some(v.str))
+        val heightCm      = body.obj.get("heightCm").flatMap(v => if v.isNull then None else Some(v.num.toInt))
+        val birthDate     = body.obj.get("birthDate").flatMap(v => if v.isNull then None else Some(v.str))
+        val activityLevel = body.obj.get("activityLevel").flatMap(v => if v.isNull then None else Some(v.str))
 
         val profile = Database.withConnection { conn =>
           val st = conn.prepareStatement(
             """INSERT INTO user_profile
               |  (user_id, bio, goal, target_kcal, target_protein_g, target_carbs_g,
               |   target_fat_g, target_fiber_g, target_saturated_fat_g,
-              |   target_water_l, base_weight_kg, goal_weight_kg)
-              |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              |   target_water_l, base_weight_kg, goal_weight_kg,
+              |   sex, height_cm, birth_date, activity_level)
+              |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::date, ?)
               |ON CONFLICT (user_id) DO UPDATE SET
               |  bio                   = EXCLUDED.bio,
               |  goal                  = EXCLUDED.goal,
@@ -55,10 +60,12 @@ object ProfileRoutes extends BaseRoutes:
               |  target_water_l        = EXCLUDED.target_water_l,
               |  base_weight_kg        = EXCLUDED.base_weight_kg,
               |  goal_weight_kg        = EXCLUDED.goal_weight_kg,
+              |  sex                   = EXCLUDED.sex,
+              |  height_cm             = EXCLUDED.height_cm,
+              |  birth_date            = EXCLUDED.birth_date,
+              |  activity_level        = EXCLUDED.activity_level,
               |  updated_at            = now()
-              |RETURNING id, user_id, bio, goal, target_kcal, target_protein_g, target_carbs_g,
-              |          target_fat_g, target_fiber_g, target_water_l, base_weight_kg,
-              |          goal_weight_kg, updated_at""".stripMargin
+              |RETURNING id""".stripMargin
           )
           st.setString(1, userId)
           bio match
@@ -78,9 +85,19 @@ object ProfileRoutes extends BaseRoutes:
           goalWeight match
             case Some(w) => st.setDouble(12, w)
             case None    => st.setNull(12, java.sql.Types.NUMERIC)
-          val rs = st.executeQuery()
-          rs.next()
-          // Re-use AggregateService's profileFromRs by reading back from DB
+          sex match
+            case Some(s) => st.setString(13, s)
+            case None    => st.setNull(13, java.sql.Types.VARCHAR)
+          heightCm match
+            case Some(h) => st.setInt(14, h)
+            case None    => st.setNull(14, java.sql.Types.INTEGER)
+          birthDate match
+            case Some(d) => st.setString(15, d)
+            case None    => st.setNull(15, java.sql.Types.VARCHAR)
+          activityLevel match
+            case Some(a) => st.setString(16, a)
+            case None    => st.setNull(16, java.sql.Types.VARCHAR)
+          st.executeQuery()
           AggregateService.getProfile(userId).get
         }
 
@@ -104,9 +121,13 @@ object ProfileRoutes extends BaseRoutes:
       "targetFiberG"        -> p.targetFiberG,
       "targetSaturatedFatG" -> p.targetSaturatedFatG,
       "targetWaterL"        -> p.targetWaterL,
-      "baseWeightKg"   -> p.baseWeightKg.map(ujson.Num.apply).getOrElse(ujson.Null),
-      "goalWeightKg"   -> p.goalWeightKg.map(ujson.Num.apply).getOrElse(ujson.Null),
-      "updatedAt"      -> p.updatedAt,
+      "baseWeightKg"    -> p.baseWeightKg.map(ujson.Num.apply).getOrElse(ujson.Null),
+      "goalWeightKg"    -> p.goalWeightKg.map(ujson.Num.apply).getOrElse(ujson.Null),
+      "sex"             -> p.sex.map(ujson.Str.apply).getOrElse(ujson.Null),
+      "heightCm"        -> p.heightCm.map(v => ujson.Num(v.toDouble)).getOrElse(ujson.Null),
+      "birthDate"       -> p.birthDate.map(ujson.Str.apply).getOrElse(ujson.Null),
+      "activityLevel"   -> p.activityLevel.map(ujson.Str.apply).getOrElse(ujson.Null),
+      "updatedAt"       -> p.updatedAt,
     )
 
   initialize()

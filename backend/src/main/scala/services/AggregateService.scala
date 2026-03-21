@@ -16,7 +16,9 @@ object AggregateService:
         """SELECT id, user_id, bio, goal,
           |  target_kcal, target_protein_g, target_carbs_g, target_fat_g,
           |  target_fiber_g, target_saturated_fat_g, target_water_l,
-          |  base_weight_kg, goal_weight_kg, updated_at
+          |  base_weight_kg, goal_weight_kg,
+          |  sex, height_cm, birth_date, activity_level,
+          |  updated_at
           |FROM user_profile WHERE user_id = ?::uuid""".stripMargin
       )
       st.setString(1, userId)
@@ -40,6 +42,10 @@ object AggregateService:
         targetWaterL        = 2.5,
         baseWeightKg   = None,
         goalWeightKg   = None,
+        sex           = None,
+        heightCm      = None,
+        birthDate     = None,
+        activityLevel = None,
         updatedAt      = "",
       )
     )
@@ -353,6 +359,14 @@ object AggregateService:
     val baseWeightOpt  = if rs.wasNull() then None else Some(baseWeightRaw)
     val goalWeightRaw  = rs.getDouble("goal_weight_kg")
     val goalWeightOpt  = if rs.wasNull() then None else Some(goalWeightRaw)
+    val sexRaw         = rs.getString("sex")
+    val sexOpt         = if rs.wasNull() then None else Some(sexRaw)
+    val heightCmRaw    = rs.getInt("height_cm")
+    val heightCmOpt    = if rs.wasNull() then None else Some(heightCmRaw)
+    val birthDateRaw   = rs.getString("birth_date")
+    val birthDateOpt   = if rs.wasNull() then None else Some(birthDateRaw.take(10))
+    val activityRaw    = rs.getString("activity_level")
+    val activityOpt    = if rs.wasNull() then None else Some(activityRaw)
     val updatedAt      = rs.getString("updated_at")
     UserProfile(
       id             = id,
@@ -368,5 +382,9 @@ object AggregateService:
       targetWaterL        = targetWaterL,
       baseWeightKg   = baseWeightOpt,
       goalWeightKg   = goalWeightOpt,
+      sex           = sexOpt,
+      heightCm      = heightCmOpt,
+      birthDate     = birthDateOpt,
+      activityLevel = activityOpt,
       updatedAt      = updatedAt,
     )

@@ -126,7 +126,7 @@
               label="Choose PDF or image"
               outlined
               dense
-              accept=".pdf,.jpg,.jpeg"
+              accept=".pdf,image/*"
               hint="Claude will extract the medical data automatically"
             >
               <template #prepend><q-icon name="attach_file" /></template>
@@ -264,8 +264,10 @@ async function submitRecord() {
   try {
     let body: Record<string, unknown>
     if (addForm.value.type === 'file' && addForm.value.pdfFile) {
-      const b64 = await fileToBase64(addForm.value.pdfFile)
-      if (addForm.value.pdfFile.type === 'application/pdf') {
+      const file = addForm.value.pdfFile
+      const b64  = await fileToBase64(file)
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      if (isPdf) {
         body = { title: addForm.value.title, pdf: b64 }
       } else {
         body = { title: addForm.value.title, image: b64 }

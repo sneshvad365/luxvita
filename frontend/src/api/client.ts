@@ -137,6 +137,10 @@ export interface UserProfile {
   targetWaterL:        number
   baseWeightKg:   number | null
   goalWeightKg:   number | null
+  sex:            'male' | 'female' | null
+  heightCm:       number | null
+  birthDate:      string | null
+  activityLevel:  'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extra_active' | null
   updatedAt:      string
 }
 
