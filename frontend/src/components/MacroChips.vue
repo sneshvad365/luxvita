@@ -42,8 +42,9 @@ const macros = computed(() => {
   return [
     { label: 'Protein', value: props.totals.proteinG, target: p?.targetProteinG ?? 150, unit: 'g', color: 'blue'   },
     { label: 'Carbs',   value: props.totals.carbsG,   target: p?.targetCarbsG   ?? 200, unit: 'g', color: 'amber'  },
-    { label: 'Fat',     value: props.totals.fatG,     target: p?.targetFatG     ?? 70,  unit: 'g', color: 'red'    },
-    { label: 'Fiber',   value: props.totals.fiberG,   target: p?.targetFiberG   ?? 25,  unit: 'g', color: 'green'  },
+    { label: 'Fat',     value: props.totals.fatG,          target: p?.targetFatG          ?? 70,  unit: 'g', color: 'red'    },
+    { label: 'Sat. Fat', value: props.totals.saturatedFatG, target: p?.targetSaturatedFatG ?? 20,  unit: 'g', color: 'pink'   },
+    { label: 'Fiber',   value: props.totals.fiberG,        target: p?.targetFiberG        ?? 25,  unit: 'g', color: 'green'  },
   ]
 })
 </script>
