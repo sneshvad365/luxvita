@@ -38,8 +38,9 @@
           <div class="col-6"><q-input v-model.number="form.targetProteinG" label="Protein (g)"     outlined dense type="number" /></div>
           <div class="col-6"><q-input v-model.number="form.targetCarbsG"   label="Carbs (g)"       outlined dense type="number" /></div>
           <div class="col-6"><q-input v-model.number="form.targetFatG"     label="Fat (g)"         outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetFiberG"   label="Fiber (g)"       outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetWaterL"   label="Water (L)"       outlined dense type="number" step="0.1" /></div>
+          <div class="col-6"><q-input v-model.number="form.targetFiberG"        label="Fiber (g)"       outlined dense type="number" /></div>
+          <div class="col-6"><q-input v-model.number="form.targetSaturatedFatG" label="Sat. fat (g)"    outlined dense type="number" /></div>
+          <div class="col-6"><q-input v-model.number="form.targetWaterL"        label="Water (L)"       outlined dense type="number" step="0.1" /></div>
         </div>
 
         <!-- Weight goals -->
@@ -97,8 +98,9 @@ const form = ref({
   targetProteinG: 150,
   targetCarbsG:   200,
   targetFatG:     70,
-  targetFiberG:   25,
-  targetWaterL:   2.5,
+  targetFiberG:        25,
+  targetSaturatedFatG: 20,
+  targetWaterL:        2.5,
   baseWeightKg:   null as number | null,
   goalWeightKg:   null as number | null,
 })
@@ -112,8 +114,9 @@ watch(() => profileStore.profile, (p) => {
     targetProteinG: p.targetProteinG,
     targetCarbsG:   p.targetCarbsG,
     targetFatG:     p.targetFatG,
-    targetFiberG:   p.targetFiberG,
-    targetWaterL:   p.targetWaterL,
+    targetFiberG:        p.targetFiberG,
+    targetSaturatedFatG: p.targetSaturatedFatG,
+    targetWaterL:        p.targetWaterL,
     baseWeightKg:   p.baseWeightKg,
     goalWeightKg:   p.goalWeightKg,
   }
