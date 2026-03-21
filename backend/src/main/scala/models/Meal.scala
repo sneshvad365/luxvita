@@ -14,6 +14,7 @@ case class Meal(
   fatG        : Option[Double],
   fiberG      : Option[Double],
   rawEstimate : Option[ujson.Value] = None,
+  photoData   : Option[String]      = None,
 ) derives ReadWriter
 
 case class BreakdownItem(
