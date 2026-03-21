@@ -93,15 +93,6 @@ body::after {
   color: #fff;
 }
 
-/* ── Header decoration icons ─────────────────────────────────────────────── */
-.header-deco {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 4px;
-  flex-shrink: 0;
-}
-
 /* ── Bottom nav ──────────────────────────────────────────────────────────── */
 .q-footer .q-tabs {
   background: var(--white);
