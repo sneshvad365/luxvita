@@ -94,6 +94,7 @@
       <CalorieCard
         :totals="today.totals"
         :profile="profile.profile"
+        :adjusted-cal-target="today.adjustedCalTarget"
         :total-l="today.waterTotalL"
         :water-entries="today.waterEntries"
         @delete-water="deleteWater"

@@ -9,25 +9,27 @@ interface WaterEntry {
 }
 
 interface TodayState {
-  selectedDate:   string
-  meals:          Meal[]
-  totals:         Macros
-  activities:     ActivityLogResponse[]
-  waterTotalL:    number
-  waterEntries:   WaterEntry[]
-  insight:        Insight | null
-  loading:        boolean
-  insightLoading: boolean
+  selectedDate:       string
+  meals:              Meal[]
+  totals:             Macros
+  adjustedCalTarget:  number | null
+  activities:         ActivityLogResponse[]
+  waterTotalL:        number
+  waterEntries:       WaterEntry[]
+  insight:            Insight | null
+  loading:            boolean
+  insightLoading:     boolean
 }
 
 const emptyMacros = (): Macros => ({ kcal: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0 })
 
 export const useTodayStore = defineStore('today', {
   state: (): TodayState => ({
-    selectedDate:   new Date().toISOString().slice(0, 10),
-    meals:          [],
-    totals:         emptyMacros(),
-    activities:     [],
+    selectedDate:       new Date().toISOString().slice(0, 10),
+    meals:              [],
+    totals:             emptyMacros(),
+    adjustedCalTarget:  null,
+    activities:         [],
     waterTotalL:    0,
     waterEntries:   [],
     insight:        null,
@@ -45,8 +47,9 @@ export const useTodayStore = defineStore('today', {
           api.get('/api/activity/today', { params: { date: d } }),
           api.get('/api/water/today',    { params: { date: d } }),
         ])
-        this.meals         = mealsRes.data.meals
-        this.totals        = mealsRes.data.totals
+        this.meals              = mealsRes.data.meals
+        this.totals             = mealsRes.data.totals
+        this.adjustedCalTarget  = mealsRes.data.adjustedCalTarget ?? null
         this.activities    = actRes.data.activities
         this.waterTotalL   = waterRes.data.totalL
         this.waterEntries  = waterRes.data.entries

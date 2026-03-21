@@ -80,18 +80,19 @@ import type { Macros, UserProfile } from 'src/api/client'
 interface WaterEntry { id: string; loggedAt: string; amountL: number }
 
 const props = defineProps<{
-  totals:       Macros
-  profile:      UserProfile | null
-  totalL:       number
-  waterEntries: WaterEntry[]
+  totals:             Macros
+  profile:            UserProfile | null
+  adjustedCalTarget:  number | null
+  totalL:             number
+  waterEntries:       WaterEntry[]
 }>()
 
 const emit = defineEmits<{ deleteWater: [id: string] }>()
 
 const uid = Math.random().toString(36).slice(2)
 
-// Calories
-const calTarget    = computed(() => props.profile?.targetKcal ?? 2000)
+// Calories — use activity-adjusted target when available
+const calTarget    = computed(() => props.adjustedCalTarget ?? props.profile?.targetKcal ?? 2000)
 const calPct       = computed(() => Math.min(100, (props.totals.kcal / calTarget.value) * 100))
 const calRemaining = computed(() => calTarget.value - props.totals.kcal)
 

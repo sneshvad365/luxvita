@@ -294,7 +294,9 @@ object MealRoutes extends BaseRoutes:
           buf.toList
         }
 
-        val totals = AggregateService.getMacrosForDate(userId, resolvedDate)
+        val totals  = AggregateService.getMacrosForDate(userId, resolvedDate)
+        val profile = AggregateService.getProfileOrDefault(userId)
+        val adjKcal = AggregateService.getAdjustedCalorieTarget(userId, resolvedDate, profile.targetKcal)
 
         ok(ujson.Obj(
           "meals" -> ujson.Arr(meals*),
@@ -306,6 +308,7 @@ object MealRoutes extends BaseRoutes:
             "saturatedFatG" -> totals.saturatedFatG,
             "fiberG"   -> totals.fiberG,
           ),
+          "adjustedCalTarget" -> adjKcal,
         ))
 
       catch

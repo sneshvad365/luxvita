@@ -242,6 +242,33 @@ object AggregateService:
         else if dur >= 30 then baseKcal + 250
         else baseKcal + 125
 
+  def getAdjustedCalorieTarget(userId: String, date: String, baseKcal: Int): Int =
+    Database.withConnection { conn =>
+      val st = conn.prepareStatement(
+        """SELECT parsed FROM activity_logs
+          |WHERE user_id = ?::uuid
+          |  AND logged_at >= ?::date
+          |  AND logged_at <  ?::date + INTERVAL '1 day'""".stripMargin
+      )
+      st.setString(1, userId)
+      st.setString(2, date)
+      st.setString(3, date)
+      val rs  = st.executeQuery()
+      var adj = 0
+      while rs.next() do
+        val parsedStr = rs.getString("parsed")
+        if !rs.wasNull() then
+          try
+            val json     = ujson.read(parsedStr)
+            val dur      = json.obj.get("durationMin").flatMap(v => if v.isNull then None else Some(v.num.toInt)).getOrElse(0)
+            val isHigh   = json.obj.get("intensity").flatMap(v => if v.isNull then None else Some(v.str)).exists(_ == "high")
+            if dur > 60 || isHigh then adj += 400
+            else if dur >= 30    then adj += 250
+            else if dur > 0      then adj += 125
+          catch case _: Exception => ()
+      baseKcal + adj
+    }
+
   // ---------------------------------------------------------------------------
   // Pattern notes
   // ---------------------------------------------------------------------------
