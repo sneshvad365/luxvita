@@ -34,8 +34,8 @@ object MealRoutes extends BaseRoutes:
 
           val (mealId, loggedAt) = Database.withConnection { conn =>
             val st = conn.prepareStatement(
-              """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate, breakdown)
-                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb)
+              """INSERT INTO meals (user_id, description, has_photo, kcal, protein_g, carbs_g, fat_g, fiber_g, raw_estimate, breakdown, photo_data)
+                |VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?)
                 |RETURNING id, logged_at""".stripMargin
             )
             st.setString(1, userId)
@@ -51,6 +51,9 @@ object MealRoutes extends BaseRoutes:
             st.setDouble(8, estimate.fiberG)
             st.setString(9, rawJson)
             st.setString(10, breakdownJson)
+            photo match
+              case Some(p) => st.setString(11, p)
+              case None    => st.setNull(11, java.sql.Types.VARCHAR)
             val rs = st.executeQuery()
             rs.next()
             (rs.getString("id"), rs.getString("logged_at"))
