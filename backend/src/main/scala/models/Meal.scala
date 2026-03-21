@@ -11,9 +11,10 @@ case class Meal(
   kcal        : Option[Int],
   proteinG    : Option[Double],
   carbsG      : Option[Double],
-  fatG        : Option[Double],
-  fiberG      : Option[Double],
-  rawEstimate : Option[ujson.Value] = None,
+  fatG          : Option[Double],
+  saturatedFatG : Option[Double] = None,
+  fiberG        : Option[Double],
+  rawEstimate   : Option[ujson.Value] = None,
   photoData   : Option[String]      = None,
 ) derives ReadWriter
 
@@ -27,14 +28,15 @@ case class BreakdownItem(
 ) derives ReadWriter
 
 case class MacroEstimate(
-  kcal       : Int,
-  proteinG   : Double,
-  carbsG     : Double,
-  fatG       : Double,
-  fiberG     : Double,
-  description: String,
-  waterMl    : Option[Int]           = None,
-  breakdown  : List[BreakdownItem]   = Nil,
+  kcal          : Int,
+  proteinG      : Double,
+  carbsG        : Double,
+  fatG          : Double,
+  saturatedFatG : Option[Double]     = None,
+  fiberG        : Double,
+  description   : String,
+  waterMl       : Option[Int]        = None,
+  breakdown     : List[BreakdownItem] = Nil,
 ) derives ReadWriter
 
 case class TodayTotals(

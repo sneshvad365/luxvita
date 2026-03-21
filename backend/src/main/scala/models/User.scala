@@ -19,6 +19,7 @@ case class UserProfile(
   targetCarbsG  : Int,
   targetFatG    : Int,
   targetFiberG  : Int,
+  targetSaturatedFatG: Int = 20,
   targetWaterL  : Double,
   baseWeightKg  : Option[Double],
   goalWeightKg  : Option[Double],
