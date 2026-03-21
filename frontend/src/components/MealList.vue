@@ -30,7 +30,6 @@
             <q-item-section side>
               <div class="column">
                 <q-btn flat round dense icon="content_copy" size="sm" color="grey-6" @click.stop="emit('copy', meal.id)" />
-                <q-btn v-if="meal.hasPhoto" flat round dense icon="photo_camera" size="sm" color="grey-6" @click.stop="openPhoto(meal)" />
                 <template v-if="!readonly">
                   <q-btn flat round dense icon="edit"   size="sm" color="grey-6" @click.stop="startEdit(meal)" />
                   <q-btn flat round dense icon="delete" size="sm" color="red-4"  @click.stop="remove(meal.id)" />
@@ -100,10 +99,16 @@
           <span>Total</span>
           <span class="text-primary">{{ breakdownMeal?.kcal ?? '—' }} kcal</span>
         </div>
+        <div v-if="breakdownMeal?.hasPhoto" class="q-mt-sm">
+          <q-btn flat no-caps dense icon="photo_camera" label="View photo" color="primary" size="sm" @click="openPhoto(breakdownMeal!)" />
+        </div>
       </q-card-section>
 
       <q-card-section v-else class="text-grey-5 text-center">
         No breakdown available for this meal
+        <div v-if="breakdownMeal?.hasPhoto" class="q-mt-sm">
+          <q-btn flat no-caps dense icon="photo_camera" label="View photo" color="primary" size="sm" @click="openPhoto(breakdownMeal!)" />
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
@@ -113,7 +118,7 @@
   </q-dialog>
 
   <!-- Photo viewer dialog -->
-  <q-dialog :model-value="!!photoMeal" @update:model-value="v => { if (!v) { photoMeal.value = null; photoData.value = null; photoError.value = false } }">
+  <q-dialog :model-value="!!photoMeal" @update:model-value="v => { if (!v) closePhotoDialog() }">
     <q-card style="min-width:300px;max-width:500px">
       <q-card-section class="q-pb-none">
         <div class="text-subtitle2 text-weight-bold">
@@ -137,7 +142,7 @@
       </q-card-section>
 
       <q-card-actions align="right">
-        <q-btn flat label="Close" color="grey-6" v-close-popup />
+        <q-btn flat label="Close" color="grey-6" @click="closePhotoDialog" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -160,6 +165,12 @@ const photoMeal    = ref<Meal | null>(null)
 const photoData    = ref<string | null>(null)
 const photoLoading = ref(false)
 const photoError   = ref(false)
+
+function closePhotoDialog() {
+  photoMeal.value  = null
+  photoData.value  = null
+  photoError.value = false
+}
 
 async function openPhoto(meal: Meal) {
   photoMeal.value    = meal
