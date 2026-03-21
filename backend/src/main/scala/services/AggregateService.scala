@@ -260,8 +260,9 @@ object AggregateService:
         if !rs.wasNull() then
           try
             val json     = ujson.read(parsedStr)
-            val dur      = json.obj.get("durationMin").flatMap(v => if v.isNull then None else Some(v.num.toInt)).getOrElse(0)
-            val isHigh   = json.obj.get("intensity").flatMap(v => if v.isNull then None else Some(v.str)).exists(_ == "high")
+            // upickle serialises Option[T] as an array: Some(x) → [x], None → []
+            val dur    = json.obj.get("durationMin").flatMap(_.arrOpt).flatMap(_.headOption).map(_.num.toInt).getOrElse(0)
+            val isHigh = json.obj.get("intensity").flatMap(_.arrOpt).flatMap(_.headOption).flatMap(_.strOpt).exists(_ == "high")
             if dur > 60 || isHigh then adj += 400
             else if dur >= 30    then adj += 250
             else if dur > 0      then adj += 125
