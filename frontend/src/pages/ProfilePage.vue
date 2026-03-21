@@ -66,7 +66,8 @@
           <strong>{{ suggestedMacros.proteinG }}g</strong> protein ·
           <strong>{{ suggestedMacros.carbsG }}g</strong> carbs ·
           <strong>{{ suggestedMacros.fatG }}g</strong> fat ·
-          <strong>{{ suggestedMacros.fiberG }}g</strong> fiber
+          <strong>{{ suggestedMacros.fiberG }}g</strong> fiber ·
+          <strong>{{ suggestedMacros.saturatedFatG }}g</strong> sat. fat
           <q-btn flat dense size="xs" label="apply all" color="primary" class="q-ml-xs" @click="applyMacros" />
         </div>
         <div class="row q-col-gutter-sm">
@@ -193,7 +194,7 @@ const suggestedFiber: Record<string, number> = {
 }
 
 interface MacroSuggestion {
-  kcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number
+  kcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; saturatedFatG: number
 }
 
 const suggestedMacros = computed<MacroSuggestion | null>(() => {
@@ -208,8 +209,9 @@ const suggestedMacros = computed<MacroSuggestion | null>(() => {
   const proteinG = Math.round(baseWeightKg * (proteinPerKg[goal] ?? 1.8))
   const fatG     = Math.round((kcal * (fatFraction[goal] ?? 0.28)) / 9)
   const carbsG   = Math.max(0, Math.round((kcal - proteinG * 4 - fatG * 9) / 4))
-  const fiberG   = suggestedFiber[goal] ?? 25
-  return { kcal, proteinG, carbsG, fatG, fiberG }
+  const fiberG        = suggestedFiber[goal] ?? 25
+  const saturatedFatG = Math.round((kcal * 0.10) / 9)
+  return { kcal, proteinG, carbsG, fatG, fiberG, saturatedFatG }
 })
 
 function applyMacros() {
@@ -218,8 +220,9 @@ function applyMacros() {
   form.value.targetKcal     = s.kcal
   form.value.targetProteinG = s.proteinG
   form.value.targetCarbsG   = s.carbsG
-  form.value.targetFatG     = s.fatG
-  form.value.targetFiberG   = s.fiberG
+  form.value.targetFatG          = s.fatG
+  form.value.targetFiberG        = s.fiberG
+  form.value.targetSaturatedFatG = s.saturatedFatG
 }
 
 watch(() => profileStore.profile, (p) => {
