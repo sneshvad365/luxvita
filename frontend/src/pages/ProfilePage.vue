@@ -1,4 +1,6 @@
 <template>
+  <div v-if="navBlocking" class="nav-block-flash nav-block-top" />
+  <div v-if="navBlocking" class="nav-block-flash nav-block-bottom" />
   <q-page class="q-pa-md q-pb-xl">
     <div class="q-gutter-md">
       <div class="row items-center justify-between">
@@ -51,7 +53,7 @@
                 <q-input v-model.number="form.heightCm" label="Height (cm)" outlined dense type="number" />
               </div>
               <div class="col-6">
-                <q-input v-model="form.birthDate" label="Date of birth" outlined dense type="date" />
+                <q-input v-model.number="form.age" label="Age" outlined dense type="number" :min="10" :max="120" />
               </div>
               <div class="col-6">
                 <q-select
@@ -61,24 +63,17 @@
                   outlined dense emit-value map-options clearable
                 />
               </div>
+              <div class="col-6">
+                <q-input v-model.number="form.baseWeightKg" label="Current weight (kg)" outlined dense type="number" step="0.1" />
+              </div>
             </div>
           </q-card-section>
         </q-card>
 
         <!-- Daily targets card -->
-        <q-card>
+        <q-card :class="{ 'targets-flash': targetsFlashing }">
           <q-card-section>
             <div class="text-subtitle2 text-weight-bold q-mb-sm">Daily targets</div>
-            <div v-if="suggestedMacros" class="text-caption text-grey-7 q-mb-sm">
-              Suggested for your goal:
-              <strong>{{ suggestedMacros.kcal }} kcal</strong> ·
-              <strong>{{ suggestedMacros.proteinG }}g</strong> protein ·
-              <strong>{{ suggestedMacros.carbsG }}g</strong> carbs ·
-              <strong>{{ suggestedMacros.fatG }}g</strong> fat ·
-              <strong>{{ suggestedMacros.fiberG }}g</strong> fiber ·
-              <strong>{{ suggestedMacros.saturatedFatG }}g</strong> sat. fat
-              <q-btn flat dense size="xs" label="apply all" color="primary" class="q-ml-xs" @click="applyMacros" />
-            </div>
             <div class="row q-col-gutter-sm">
               <div class="col-6"><q-input v-model.number="form.targetKcal"          label="Calories (kcal)" outlined dense type="number" /></div>
               <div class="col-6"><q-input v-model.number="form.targetProteinG"       label="Protein (g)"     outlined dense type="number" /></div>
@@ -91,19 +86,12 @@
           </q-card-section>
         </q-card>
 
-        <!-- Weight card -->
-        <q-card>
-          <q-card-section>
-            <div class="text-subtitle2 text-weight-bold q-mb-sm">Weight</div>
-            <div class="row q-col-gutter-sm">
-              <div class="col-6"><q-input v-model.number="form.baseWeightKg" label="Starting weight (kg)" outlined dense type="number" step="0.1" /></div>
-              <div class="col-6"><q-input v-model.number="form.goalWeightKg" label="Goal weight (kg)"     outlined dense type="number" step="0.1" /></div>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <q-banner v-if="saved" class="bg-green-1 text-green-8 rounded-borders" dense>
+<q-banner v-if="saved" class="bg-green-1 text-green-8 rounded-borders" dense>
           Profile saved!
+        </q-banner>
+
+        <q-banner v-if="!profileComplete" class="bg-blue-1 text-blue-9 rounded-borders" dense>
+          Fill in all body stats above to unlock the app.
         </q-banner>
 
         <q-btn
@@ -112,6 +100,7 @@
           color="primary"
           class="full-width"
           :loading="saving"
+          :disable="!profileComplete"
           unelevated
         />
       </q-form>
@@ -120,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter }       from 'vue-router'
 import { useProfileStore } from 'src/stores/profile'
 import { useAuthStore }    from 'src/stores/auth'
@@ -128,8 +117,17 @@ import { useAuthStore }    from 'src/stores/auth'
 const router       = useRouter()
 const profileStore = useProfileStore()
 const auth         = useAuthStore()
-const saving       = ref(false)
+const saving          = ref(false)
+const targetsFlashing = ref(false)
 const saved        = ref(false)
+const navBlocking     = ref(false)
+
+watch(() => profileStore.navigationBlocked, (val) => {
+  if (!val) return
+  profileStore.navigationBlocked = false
+  navBlocking.value = true
+  setTimeout(() => { navBlocking.value = false }, 800)
+})
 
 const goalOptions = [
   { label: 'Fat loss',    value: 'fat_loss'    },
@@ -150,27 +148,25 @@ const activityOptions = [
   { label: 'Extra active (physical job or twice/day)',    value: 'extra_active'       },
 ]
 
-const bioPlaceholder = `Male, 33, 180cm, 83kg. Goal is to lose fat while keeping muscle.
-Train 4x a week — gym (chest/back, legs) and tennis on weekends.
-Desk job, mostly sedentary outside workouts. Tend to snack a lot
-in the evening. Lactose intolerant. Trying to eat more protein
-but struggle on weekends.`
+const bioPlaceholder = `Lactose intolerant. Try to eat mostly whole foods but snack a lot in the evenings.
+Struggle to hit protein on weekends. Don't cook much — mostly meal prep or
+takeaway. Trying to cut down on processed food.`
 
 const form = ref({
   bio:            '',
   goal:           'maintenance' as 'fat_loss' | 'muscle_gain' | 'maintenance',
-  targetKcal:     2000,
-  targetProteinG: 150,
-  targetCarbsG:   200,
-  targetFatG:     70,
-  targetFiberG:        25,
-  targetSaturatedFatG: 20,
-  targetWaterL:        2.5,
+  targetKcal:          null as number | null,
+  targetProteinG:      null as number | null,
+  targetCarbsG:        null as number | null,
+  targetFatG:          null as number | null,
+  targetFiberG:        null as number | null,
+  targetSaturatedFatG: null as number | null,
+  targetWaterL:        null as number | null,
   baseWeightKg:   null as number | null,
   goalWeightKg:   null as number | null,
   sex:            null as 'male' | 'female' | null,
   heightCm:       null as number | null,
-  birthDate:      null as string | null,
+  age:            null as number | null,
   activityLevel:  null as string | null,
 })
 
@@ -213,9 +209,8 @@ interface MacroSuggestion {
 }
 
 const suggestedMacros = computed<MacroSuggestion | null>(() => {
-  const { sex, heightCm, birthDate, activityLevel, baseWeightKg, goal } = form.value
-  if (!sex || !heightCm || !birthDate || !activityLevel || !baseWeightKg) return null
-  const age = Math.floor((Date.now() - new Date(birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
+  const { sex, heightCm, age, activityLevel, baseWeightKg, goal } = form.value
+  if (!sex || !heightCm || !age || !activityLevel || !baseWeightKg) return null
   if (age <= 0) return null
   const bmr = sex === 'male'
     ? 10 * baseWeightKg + 6.25 * heightCm - 5 * age + 5
@@ -229,16 +224,28 @@ const suggestedMacros = computed<MacroSuggestion | null>(() => {
   return { kcal, proteinG, carbsG, fatG, fiberG, saturatedFatG }
 })
 
-function applyMacros() {
-  if (!suggestedMacros.value) return
-  const s = suggestedMacros.value
-  form.value.targetKcal     = s.kcal
-  form.value.targetProteinG = s.proteinG
-  form.value.targetCarbsG   = s.carbsG
-  form.value.targetFatG          = s.fatG
-  form.value.targetFiberG        = s.fiberG
-  form.value.targetSaturatedFatG = s.saturatedFatG
-}
+const profileComplete = computed(() => {
+  const f = form.value
+  return !!f.sex && !!f.heightCm && !!f.age && !!f.activityLevel && !!f.baseWeightKg
+})
+
+watch(
+  () => [form.value.sex, form.value.heightCm, form.value.age, form.value.activityLevel, form.value.baseWeightKg, form.value.goal],
+  () => {
+    const s = suggestedMacros.value
+    if (!s) return
+    form.value.targetKcal          = s.kcal
+    form.value.targetProteinG      = s.proteinG
+    form.value.targetCarbsG        = s.carbsG
+    form.value.targetFatG          = s.fatG
+    form.value.targetFiberG        = s.fiberG
+    form.value.targetSaturatedFatG = s.saturatedFatG
+    // flash the card
+    targetsFlashing.value = false
+    nextTick(() => { targetsFlashing.value = true })
+    setTimeout(() => { targetsFlashing.value = false }, 700)
+  }
+)
 
 watch(() => profileStore.profile, (p) => {
   if (!p) return
@@ -256,7 +263,9 @@ watch(() => profileStore.profile, (p) => {
     goalWeightKg:   p.goalWeightKg,
     sex:            p.sex,
     heightCm:       p.heightCm,
-    birthDate:      p.birthDate,
+    age:            p.birthDate
+                    ? Math.floor((Date.now() - new Date(p.birthDate).getTime()) / (365.25 * 24 * 3600 * 1000))
+                    : null,
     activityLevel:  p.activityLevel,
   }
 }, { immediate: true })
@@ -274,7 +283,9 @@ async function save() {
       goalWeightKg: form.value.goalWeightKg ?? null,
       sex:          form.value.sex ?? null,
       heightCm:     form.value.heightCm ?? null,
-      birthDate:    form.value.birthDate ?? null,
+      birthDate:    form.value.age
+                      ? `${new Date().getFullYear() - form.value.age}-07-01`
+                      : null,
       activityLevel: form.value.activityLevel ?? null,
     })
     saved.value = true
@@ -288,3 +299,32 @@ function logout() {
   void router.push('/login')
 }
 </script>
+
+<style scoped>
+@keyframes targets-flash {
+  0%   { background: #fff; }
+  30%  { background: #EEF4FB; box-shadow: 0 0 0 3px rgba(27,79,138,0.18); }
+  100% { background: #fff; box-shadow: none; }
+}
+.targets-flash {
+  animation: targets-flash 0.7s ease;
+}
+
+@keyframes nav-block-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.nav-block-flash {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #D42B2B;
+  z-index: 9999;
+  animation: nav-block-flash 0.8s ease forwards;
+  pointer-events: none;
+}
+.nav-block-top    { top: 0; }
+.nav-block-bottom { bottom: 0; }
+</style>

@@ -30,8 +30,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-const activeTab = ref('today')
+import { ref, onMounted } from 'vue'
+import { useProfileStore } from 'src/stores/profile'
+
+const activeTab    = ref('today')
+const profileStore = useProfileStore()
+onMounted(() => profileStore.fetch())
 </script>
 
 <style>
