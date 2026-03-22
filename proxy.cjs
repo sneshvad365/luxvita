@@ -1,5 +1,5 @@
 const http      = require('http')
-const httpProxy = require('/tmp/node_modules/http-proxy')
+const httpProxy = require('http-proxy')
 const fs        = require('fs')
 const path      = require('path')
 
@@ -61,7 +61,14 @@ http.createServer((req, res) => {
 
   const ext  = path.extname(filePath)
   const mime = MIME[ext] || 'application/octet-stream'
-  res.writeHead(200, { 'Content-Type': mime })
+
+  // Never cache HTML or service worker files; hashed assets can be cached forever
+  const noCache = ['.html', '.webmanifest'].includes(ext) || path.basename(filePath) === 'sw.js'
+  const cacheControl = noCache
+    ? 'no-cache, no-store, must-revalidate'
+    : 'public, max-age=31536000, immutable'
+
+  res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': cacheControl })
   fs.createReadStream(filePath).pipe(res)
 
 }).listen(PORT, () => console.log(`Proxy on http://localhost:${PORT}`))

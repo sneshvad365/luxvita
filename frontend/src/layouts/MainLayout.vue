@@ -2,7 +2,7 @@
   <q-layout view="lHh LpR lFf">
     <q-header elevated class="bg-primary">
       <q-toolbar>
-        <img src="/favicon.svg" alt="" style="width:28px;height:28px;margin-right:10px;flex-shrink:0" />
+        <img src="/luxvita/favicon.svg" alt="" style="width:28px;height:28px;margin-right:10px;flex-shrink:0" />
         <q-toolbar-title>LuxVita</q-toolbar-title>
       </q-toolbar>
     </q-header>

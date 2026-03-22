@@ -1,63 +1,56 @@
 <template>
   <q-page class="q-pa-md q-pb-xl">
     <div class="q-gutter-md">
-      <div class="text-h6 text-weight-bold">Log Meal</div>
 
-      <!-- Description input -->
-      <q-input
-        v-model="description"
-        type="textarea"
-        placeholder="e.g. 200g grilled chicken, cup of basmati rice, roasted vegetables"
-        outlined
-        autogrow
-      />
-
-      <!-- Photo button + tip -->
-      <div class="row items-start q-gutter-sm">
-        <q-btn
-          icon="photo_camera"
-          :label="photo ? 'Photo selected ✓' : 'Add photo'"
-          :color="photo ? 'positive' : 'grey-7'"
-          outline
-          @click="pickPhoto"
-        />
-        <div class="text-caption text-grey-6 col" style="line-height:1.4">
-          Include a fork, coin, or ruler for accurate portion size. You can also photograph a
-          <strong>barcode</strong> or <strong>nutrition label</strong>.
-        </div>
-      </div>
-      <input ref="fileInput"        type="file" accept="image/*"                    style="display:none" @change="onFileChange" />
-      <input ref="fileInputCamera" type="file" accept="image/*" capture="environment" style="display:none" @change="onFileChange" />
-
-      <!-- Photo source dialog -->
-      <q-dialog v-model="photoDialog">
-        <q-card style="min-width:240px">
-          <q-card-section class="q-gutter-sm">
-            <q-btn unelevated color="primary"  icon="photo_camera"  label="Take photo"       class="full-width" @click="openCamera"  />
-            <q-btn unelevated color="grey-7"   icon="photo_library" label="Choose from gallery" class="full-width" @click="openGallery" />
-          </q-card-section>
-        </q-card>
-      </q-dialog>
-
-      <!-- Water quick-add -->
-      <div class="row items-center q-gutter-sm">
-        <q-icon name="water_drop" color="cyan-7" size="sm" />
-        <span class="text-caption text-grey-7">Add water:</span>
-        <q-btn
-          v-for="amt in quickAmounts" :key="amt.label"
-          dense unelevated outline color="cyan-7" size="sm"
-          :label="amt.label"
-          :loading="quickAdding === amt.l"
-          @click="quickAdd(amt.l)"
-        />
-      </div>
-      <q-banner v-if="drinkDone" class="bg-cyan-1 text-cyan-9 rounded-borders" dense>
-        Logged {{ (lastDrinkL * 1000).toFixed(0) }}ml
-      </q-banner>
-
-      <!-- Estimate preview card -->
-      <q-card v-if="log.pendingEstimate" class="bg-green-1">
+      <!-- Meal logging card -->
+      <q-card>
         <q-card-section>
+          <div class="text-h6 text-weight-bold q-mb-sm">Log Meal</div>
+
+          <q-input
+            v-model="description"
+            type="textarea"
+            placeholder="e.g. 200g grilled chicken, cup of basmati rice, roasted vegetables"
+            outlined
+            autogrow
+          />
+
+          <div class="row items-start q-gutter-sm q-mt-sm">
+            <q-btn
+              icon="photo_camera"
+              :label="photo ? 'Photo selected ✓' : 'Add photo'"
+              :color="photo ? 'positive' : 'primary'"
+              outline
+              @click="pickPhoto"
+            />
+            <div class="text-caption text-grey-6 col" style="line-height:1.4">
+              Include a fork, coin, or ruler for accurate portion size. You can also photograph a
+              <strong>barcode</strong> or <strong>nutrition label</strong>.
+            </div>
+          </div>
+          <input ref="fileInput"        type="file" accept="image/*"                    style="display:none" @change="onFileChange" />
+          <input ref="fileInputCamera" type="file" accept="image/*" capture="environment" style="display:none" @change="onFileChange" />
+
+          <!-- Water quick-add -->
+          <div class="row items-center q-gutter-sm q-mt-sm">
+            <q-icon name="water_drop" color="cyan-7" size="sm" />
+            <span class="text-caption text-grey-7">Add water:</span>
+            <q-btn
+              v-for="amt in quickAmounts" :key="amt.label"
+              dense unelevated outline color="cyan-7" size="sm"
+              :label="amt.label"
+              :loading="quickAdding === amt.l"
+              @click="quickAdd(amt.l)"
+            />
+          </div>
+          <q-banner v-if="drinkDone" class="bg-cyan-1 text-cyan-9 rounded-borders q-mt-sm" dense>
+            Logged {{ (lastDrinkL * 1000).toFixed(0) }}ml
+          </q-banner>
+        </q-card-section>
+
+        <!-- Estimate preview -->
+        <q-card-section v-if="log.pendingEstimate" class="q-pt-none">
+          <q-separator class="q-mb-md" />
           <div class="text-subtitle2 text-weight-bold text-green-8 q-mb-sm">Estimated macros</div>
           <div class="text-caption text-grey-7 q-mb-sm">{{ log.pendingEstimate.description }}</div>
           <div class="row q-gutter-sm">
@@ -68,74 +61,87 @@
             <q-chip v-if="log.pendingEstimate.saturatedFatG != null" dense color="pink-2" text-color="pink-9">SF {{ log.pendingEstimate.saturatedFatG!.toFixed(1) }}g</q-chip>
             <q-chip dense color="green-2"  text-color="green-9">Fi {{ log.pendingEstimate.fiberG.toFixed(1) }}g</q-chip>
           </div>
-        </q-card-section>
 
-        <!-- Hydration prompt -->
-        <q-card-section v-if="log.pendingEstimate.waterMl" class="q-pt-none">
-          <q-separator class="q-mb-sm" />
-          <div class="row items-center q-gutter-sm">
-            <q-icon name="water_drop" color="cyan-7" />
-            <div class="col text-caption text-grey-8">
-              Add <strong>{{ log.pendingEstimate.waterMl }}ml</strong> to hydration?
+          <!-- Hydration prompt -->
+          <div v-if="log.pendingEstimate.waterMl" class="q-mt-sm">
+            <q-separator class="q-mb-sm" />
+            <div class="row items-center q-gutter-sm">
+              <q-icon name="water_drop" color="cyan-7" />
+              <div class="col text-caption text-grey-8">
+                Add <strong>{{ log.pendingEstimate.waterMl }}ml</strong> to hydration?
+              </div>
+              <q-input
+                v-model.number="waterMlOverride"
+                dense outlined type="number" suffix="ml"
+                style="width: 90px"
+              />
+              <q-toggle v-model="addWater" color="cyan-7" />
             </div>
-            <q-input
-              v-model.number="waterMlOverride"
-              dense outlined type="number" suffix="ml"
-              style="width: 90px"
-            />
-            <q-toggle v-model="addWater" color="cyan-7" />
+          </div>
+
+          <div class="row justify-end q-gutter-sm q-mt-md">
+            <q-btn flat label="Cancel" @click="cancel" />
+            <q-btn unelevated label="Confirm & save" color="primary" @click="confirmMeal" />
           </div>
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" @click="cancel" />
-          <q-btn unelevated label="Confirm & save" color="primary" @click="confirmMeal" />
-        </q-card-actions>
+        <q-card-section v-if="log.error" class="q-pt-none">
+          <q-banner class="bg-red-1 text-red-8 rounded-borders" dense>{{ log.error }}</q-banner>
+        </q-card-section>
+
+        <q-card-section v-if="!log.pendingEstimate" class="q-pt-none">
+          <q-btn
+            label="Estimate macros"
+            color="primary"
+            class="full-width"
+            :loading="log.submitting"
+            :disable="!description && !photo"
+            unelevated
+            @click="estimate"
+          />
+        </q-card-section>
       </q-card>
 
-      <q-banner v-if="log.error" class="bg-red-1 text-red-8 rounded-borders" dense>
-        {{ log.error }}
-      </q-banner>
-
-      <div v-if="!log.pendingEstimate">
-        <q-btn
-          label="Estimate macros"
-          color="primary"
-          class="full-width"
-          :loading="log.submitting"
-          :disable="!description && !photo"
-          unelevated
-          @click="estimate"
-        />
-      </div>
-
-      <q-separator class="q-my-md" />
-
-      <!-- Activity log -->
-      <div class="text-h6 text-weight-bold">Log Activity</div>
-      <q-input
-        v-model="activityEntry"
-        type="textarea"
-        placeholder="e.g. 1h gym chest and back, 9200 steps"
-        outlined
-        autogrow
-      />
-      <div>
-        <q-btn
-          label="Log activity"
-          color="secondary"
-          class="full-width"
-          :loading="activityLoading"
-          :disable="!activityEntry"
-          unelevated
-          @click="submitActivity"
-        />
-      </div>
-      <q-banner v-if="activityDone" class="bg-green-1 text-green-8 rounded-borders" dense>
-        Activity logged!
-      </q-banner>
+      <!-- Activity card -->
+      <q-card>
+        <q-card-section>
+          <div class="text-h6 text-weight-bold q-mb-sm">Log Activity</div>
+          <q-input
+            v-model="activityEntry"
+            type="textarea"
+            placeholder="e.g. 1h gym chest and back, 9200 steps"
+            outlined
+            autogrow
+          />
+          <q-banner v-if="activityDone" class="bg-green-1 text-green-8 rounded-borders q-mt-sm" dense>
+            Activity logged!
+          </q-banner>
+        </q-card-section>
+        <q-card-section class="q-pt-none">
+          <q-btn
+            label="Log activity"
+            color="secondary"
+            class="full-width"
+            :loading="activityLoading"
+            :disable="!activityEntry"
+            unelevated
+            @click="submitActivity"
+          />
+        </q-card-section>
+      </q-card>
 
     </div>
+
+    <!-- Photo source dialog -->
+    <q-dialog v-model="photoDialog">
+      <q-card style="min-width:240px">
+        <q-card-section class="q-gutter-sm">
+          <q-btn unelevated color="primary"  icon="photo_camera"  label="Take photo"          class="full-width" @click="openCamera"  />
+          <q-btn unelevated color="primary"  icon="photo_library" label="Choose from gallery" class="full-width" @click="openGallery" />
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -163,7 +169,6 @@ const waterMlOverride  = ref<number>(0)
 
 function pickPhoto() {
   if (Capacitor.isNativePlatform()) {
-    // Capacitor shows its own camera/gallery prompt natively
     Camera.getPhoto({
       quality:      90,
       allowEditing: false,
@@ -272,3 +277,4 @@ async function submitActivity() {
   }
 }
 </script>
+

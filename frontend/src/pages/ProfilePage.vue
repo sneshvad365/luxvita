@@ -9,83 +9,98 @@
       <q-inner-loading :showing="profileStore.loading" />
 
       <q-form @submit.prevent="save" class="q-gutter-md">
-        <!-- Bio -->
-        <q-input
-          v-model="form.bio"
-          type="textarea"
-          label="About you (for AI context)"
-          :placeholder="bioPlaceholder"
-          outlined
-          autogrow
-          hint="Helps AI give personalised insights"
-        />
 
-        <!-- Goal -->
-        <q-select
-          v-model="form.goal"
-          :options="goalOptions"
-          label="Goal"
-          outlined
-          dense
-          emit-value
-          map-options
-        />
-
-        <!-- Body stats for Mifflin-St Jeor -->
-        <div class="text-subtitle2 text-weight-bold">Body stats</div>
-        <div class="row q-col-gutter-sm">
-          <div class="col-6">
-            <q-select
-              v-model="form.sex"
-              :options="sexOptions"
-              label="Sex"
-              outlined dense emit-value map-options clearable
+        <!-- Bio + Goal card -->
+        <q-card>
+          <q-card-section class="q-gutter-md">
+            <q-input
+              v-model="form.bio"
+              type="textarea"
+              label="About you (for AI context)"
+              :placeholder="bioPlaceholder"
+              outlined
+              autogrow
+              hint="Helps AI give personalised insights"
             />
-          </div>
-          <div class="col-6">
-            <q-input v-model.number="form.heightCm" label="Height (cm)" outlined dense type="number" />
-          </div>
-          <div class="col-6">
-            <q-input v-model="form.birthDate" label="Date of birth" outlined dense type="date" />
-          </div>
-          <div class="col-6">
             <q-select
-              v-model="form.activityLevel"
-              :options="activityOptions"
-              label="Activity level"
-              outlined dense emit-value map-options clearable
+              v-model="form.goal"
+              :options="goalOptions"
+              label="Goal"
+              outlined
+              dense
+              emit-value
+              map-options
             />
-          </div>
-        </div>
+          </q-card-section>
+        </q-card>
 
-        <!-- Targets -->
-        <div class="text-subtitle2 text-weight-bold">Daily targets</div>
-        <div v-if="suggestedMacros" class="text-caption text-grey-7 q-mb-xs">
-          Suggested for your goal:
-          <strong>{{ suggestedMacros.kcal }} kcal</strong> ·
-          <strong>{{ suggestedMacros.proteinG }}g</strong> protein ·
-          <strong>{{ suggestedMacros.carbsG }}g</strong> carbs ·
-          <strong>{{ suggestedMacros.fatG }}g</strong> fat ·
-          <strong>{{ suggestedMacros.fiberG }}g</strong> fiber ·
-          <strong>{{ suggestedMacros.saturatedFatG }}g</strong> sat. fat
-          <q-btn flat dense size="xs" label="apply all" color="primary" class="q-ml-xs" @click="applyMacros" />
-        </div>
-        <div class="row q-col-gutter-sm">
-          <div class="col-6"><q-input v-model.number="form.targetKcal"     label="Calories (kcal)" outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetProteinG" label="Protein (g)"     outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetCarbsG"   label="Carbs (g)"       outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetFatG"     label="Fat (g)"         outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetFiberG"        label="Fiber (g)"       outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetSaturatedFatG" label="Sat. fat (g)"    outlined dense type="number" /></div>
-          <div class="col-6"><q-input v-model.number="form.targetWaterL"        label="Water (L)"       outlined dense type="number" step="0.1" /></div>
-        </div>
+        <!-- Body stats card -->
+        <q-card>
+          <q-card-section>
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">Body stats</div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-select
+                  v-model="form.sex"
+                  :options="sexOptions"
+                  label="Sex"
+                  outlined dense emit-value map-options clearable
+                />
+              </div>
+              <div class="col-6">
+                <q-input v-model.number="form.heightCm" label="Height (cm)" outlined dense type="number" />
+              </div>
+              <div class="col-6">
+                <q-input v-model="form.birthDate" label="Date of birth" outlined dense type="date" />
+              </div>
+              <div class="col-6">
+                <q-select
+                  v-model="form.activityLevel"
+                  :options="activityOptions"
+                  label="Activity level"
+                  outlined dense emit-value map-options clearable
+                />
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
 
-        <!-- Weight goals -->
-        <div class="text-subtitle2 text-weight-bold">Weight</div>
-        <div class="row q-col-gutter-sm">
-          <div class="col-6"><q-input v-model.number="form.baseWeightKg" label="Starting weight (kg)" outlined dense type="number" step="0.1" /></div>
-          <div class="col-6"><q-input v-model.number="form.goalWeightKg" label="Goal weight (kg)"     outlined dense type="number" step="0.1" /></div>
-        </div>
+        <!-- Daily targets card -->
+        <q-card>
+          <q-card-section>
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">Daily targets</div>
+            <div v-if="suggestedMacros" class="text-caption text-grey-7 q-mb-sm">
+              Suggested for your goal:
+              <strong>{{ suggestedMacros.kcal }} kcal</strong> ·
+              <strong>{{ suggestedMacros.proteinG }}g</strong> protein ·
+              <strong>{{ suggestedMacros.carbsG }}g</strong> carbs ·
+              <strong>{{ suggestedMacros.fatG }}g</strong> fat ·
+              <strong>{{ suggestedMacros.fiberG }}g</strong> fiber ·
+              <strong>{{ suggestedMacros.saturatedFatG }}g</strong> sat. fat
+              <q-btn flat dense size="xs" label="apply all" color="primary" class="q-ml-xs" @click="applyMacros" />
+            </div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-6"><q-input v-model.number="form.targetKcal"          label="Calories (kcal)" outlined dense type="number" /></div>
+              <div class="col-6"><q-input v-model.number="form.targetProteinG"       label="Protein (g)"     outlined dense type="number" /></div>
+              <div class="col-6"><q-input v-model.number="form.targetCarbsG"         label="Carbs (g)"       outlined dense type="number" /></div>
+              <div class="col-6"><q-input v-model.number="form.targetFatG"           label="Fat (g)"         outlined dense type="number" /></div>
+              <div class="col-6"><q-input v-model.number="form.targetFiberG"         label="Fiber (g)"       outlined dense type="number" /></div>
+              <div class="col-6"><q-input v-model.number="form.targetSaturatedFatG"  label="Sat. fat (g)"    outlined dense type="number" /></div>
+              <div class="col-6"><q-input v-model.number="form.targetWaterL"         label="Water (L)"       outlined dense type="number" step="0.1" /></div>
+            </div>
+          </q-card-section>
+        </q-card>
+
+        <!-- Weight card -->
+        <q-card>
+          <q-card-section>
+            <div class="text-subtitle2 text-weight-bold q-mb-sm">Weight</div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-6"><q-input v-model.number="form.baseWeightKg" label="Starting weight (kg)" outlined dense type="number" step="0.1" /></div>
+              <div class="col-6"><q-input v-model.number="form.goalWeightKg" label="Goal weight (kg)"     outlined dense type="number" step="0.1" /></div>
+            </div>
+          </q-card-section>
+        </q-card>
 
         <q-banner v-if="saved" class="bg-green-1 text-green-8 rounded-borders" dense>
           Profile saved!

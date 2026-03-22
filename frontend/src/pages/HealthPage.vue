@@ -3,91 +3,98 @@
     <div class="q-gutter-md">
       <div class="text-h6 text-weight-bold">Health records</div>
 
-      <div class="row q-gutter-sm">
-        <q-btn unelevated color="secondary" icon="psychology" label="Insight"    class="col" @click="getInsight" :loading="insightLoading" />
-        <q-btn unelevated color="primary"   icon="add"        label="Add record" class="col" @click="addOpen = true" />
-      </div>
+      <!-- Records card -->
+      <q-card>
+        <q-card-section>
+          <div class="row q-gutter-sm q-mb-sm">
+            <q-btn unelevated color="secondary" icon="psychology" label="Insight"    class="col" @click="getInsight" :loading="insightLoading" />
+            <q-btn unelevated color="primary"   icon="add"        label="Add record" class="col" @click="addOpen = true" />
+          </div>
 
-      <div v-if="records.length === 0" class="text-grey-5 text-center q-py-xl text-body2">
-        No records yet — add blood tests, doctor notes, or any health data
-      </div>
+          <div v-if="records.length === 0" class="text-grey-5 text-center q-py-xl text-body2">
+            No records yet — add blood tests, doctor notes, or any health data
+          </div>
 
-      <q-list separator v-else>
-        <q-item
-          v-for="rec in records"
-          :key="rec.id"
-          clickable
-          dense
-          class="q-px-none"
-          @click="openRecord(rec.id)"
-        >
-          <q-item-section avatar>
-            <q-icon :name="rec.sourceType === 'pdf' ? 'picture_as_pdf' : rec.sourceType === 'image' ? 'image' : 'notes'" color="primary" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label class="text-body2 row items-center q-gutter-xs">
-              <span>{{ rec.title }}</span>
-              <q-chip
-                v-if="rec.hasContent === false"
-                dense
-                color="warning"
-                text-color="white"
-                icon="warning"
-                label="No medical data"
-                size="xs"
-              />
-            </q-item-label>
-            <q-item-label caption>{{ formatDate(rec.createdAt) }}</q-item-label>
-          </q-item-section>
-          <q-item-section side>
-            <q-btn flat round dense icon="delete" size="sm" color="red-4" @click.stop="deleteRecord(rec.id)" />
-          </q-item-section>
-        </q-item>
-      </q-list>
-
-      <!-- AI Chat Section -->
-      <div v-if="chatMessages.length > 0" class="q-mt-md">
-        <div class="text-subtitle2 text-weight-bold q-mb-sm row items-center q-gutter-xs">
-          <q-icon name="psychology" color="secondary" />
-          <span>Health Advisor</span>
-          <q-btn flat round dense icon="close" size="xs" color="grey-5" class="q-ml-auto" @click="clearChat" />
-        </div>
-
-        <div class="q-gutter-sm">
-          <div
-            v-for="(msg, i) in chatMessages"
-            :key="i"
-            :class="msg.role === 'user' ? 'row justify-end' : 'row justify-start'"
-          >
-            <div
-              :class="msg.role === 'user'
-                ? 'bg-primary text-white rounded-borders q-pa-sm text-body2'
-                : 'bg-grey-2 text-grey-9 rounded-borders q-pa-sm text-body2'"
-              style="max-width: 85%; white-space: pre-wrap; word-break: break-word"
+          <q-list separator v-else>
+            <q-item
+              v-for="rec in records"
+              :key="rec.id"
+              clickable
+              dense
+              class="q-px-none"
+              @click="openRecord(rec.id)"
             >
-              {{ msg.content }}
+              <q-item-section avatar>
+                <q-icon :name="rec.sourceType === 'pdf' ? 'picture_as_pdf' : rec.sourceType === 'image' ? 'image' : 'notes'" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-body2 row items-center q-gutter-xs">
+                  <span>{{ rec.title }}</span>
+                  <q-chip
+                    v-if="rec.hasContent === false"
+                    dense
+                    color="warning"
+                    text-color="white"
+                    icon="warning"
+                    label="No medical data"
+                    size="xs"
+                  />
+                </q-item-label>
+                <q-item-label caption>{{ formatDate(rec.createdAt) }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat round dense icon="delete" size="sm" color="red-4" @click.stop="deleteRecord(rec.id)" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+      </q-card>
+
+      <!-- AI Chat card -->
+      <q-card v-if="chatMessages.length > 0">
+        <q-card-section>
+          <div class="text-subtitle2 text-weight-bold q-mb-sm row items-center q-gutter-xs">
+            <q-icon name="psychology" color="secondary" />
+            <span>Health Advisor</span>
+            <q-btn flat round dense icon="close" size="xs" color="grey-5" class="q-ml-auto" @click="clearChat" />
+          </div>
+
+          <div class="q-gutter-sm">
+            <div
+              v-for="(msg, i) in chatMessages"
+              :key="i"
+              :class="msg.role === 'user' ? 'row justify-end' : 'row justify-start'"
+            >
+              <div
+                :class="msg.role === 'user'
+                  ? 'bg-primary text-white rounded-borders q-pa-sm text-body2'
+                  : 'bg-grey-2 text-grey-9 rounded-borders q-pa-sm text-body2'"
+                style="max-width: 85%; white-space: pre-wrap; word-break: break-word"
+              >
+                {{ msg.content }}
+              </div>
+            </div>
+
+            <div v-if="chatLoading" class="row justify-start">
+              <div class="bg-grey-2 rounded-borders q-pa-sm">
+                <q-spinner-dots color="secondary" size="20px" />
+              </div>
             </div>
           </div>
 
-          <div v-if="chatLoading" class="row justify-start">
-            <div class="bg-grey-2 rounded-borders q-pa-sm">
-              <q-spinner-dots color="secondary" size="20px" />
-            </div>
+          <div class="row q-mt-sm q-gutter-sm">
+            <q-input
+              v-model="chatInput"
+              outlined
+              dense
+              placeholder="Ask a follow-up question..."
+              class="col"
+              @keyup.enter="sendChat"
+            />
+            <q-btn unelevated color="secondary" icon="send" :loading="chatLoading" :disable="!chatInput.trim()" @click="sendChat" />
           </div>
-        </div>
-
-        <div class="row q-mt-sm q-gutter-sm">
-          <q-input
-            v-model="chatInput"
-            outlined
-            dense
-            placeholder="Ask a follow-up question..."
-            class="col"
-            @keyup.enter="sendChat"
-          />
-          <q-btn unelevated color="secondary" icon="send" :loading="chatLoading" :disable="!chatInput.trim()" @click="sendChat" />
-        </div>
-      </div>
+        </q-card-section>
+      </q-card>
     </div>
 
     <!-- Add record dialog -->

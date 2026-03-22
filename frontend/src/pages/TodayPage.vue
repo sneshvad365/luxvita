@@ -13,7 +13,7 @@
       <div v-if="isToday">
         <q-btn
           unelevated
-          color="primary"
+          color="secondary"
           icon="lightbulb"
           label="Get today's insight"
           :loading="today.insightLoading"

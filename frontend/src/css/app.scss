@@ -40,7 +40,14 @@
 html { font-size: 16px; }
 
 body {
-  background: var(--off-white);
+  background:
+    linear-gradient(150deg,
+      #C8DCF5 0%,
+      #E4EFF9 25%,
+      #F4F6FA 55%,
+      #F9E8E8 80%,
+      #F5D5D5 100%);
+  background-attachment: fixed;
   color: var(--text-dark);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-weight: 400;
@@ -53,8 +60,10 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 0% 0%,    rgba(27, 79, 138, 0.05) 0%, transparent 60%),
-    radial-gradient(ellipse at 100% 100%, rgba(212, 43, 43, 0.04) 0%, transparent 55%);
+    radial-gradient(ellipse at 5% 5%,    rgba(27, 79, 138, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 95% 95%,  rgba(212, 43, 43, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 10%,  rgba(212, 43, 43, 0.07) 0%, transparent 40%),
+    radial-gradient(ellipse at 15% 90%,  rgba(27, 79, 138, 0.07) 0%, transparent 40%);
   pointer-events: none;
   z-index: 0;
 }
@@ -109,9 +118,11 @@ body::after {
 /* ── Cards ───────────────────────────────────────────────────────────────── */
 .q-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.9);
   border-radius: 16px;
-  box-shadow: 0 2px 16px var(--shadow);
+  box-shadow:
+    0 4px 24px rgba(18, 36, 58, 0.13),
+    0 1px 4px  rgba(18, 36, 58, 0.07);
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
@@ -168,7 +179,8 @@ body::after {
 /* ── Chips ───────────────────────────────────────────────────────────────── */
 .q-chip {
   border-radius: 8px;
-  font-weight: 500;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(18, 36, 58, 0.10);
 }
 
 /* ── List items ──────────────────────────────────────────────────────────── */
