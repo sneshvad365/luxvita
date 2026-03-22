@@ -1,7 +1,11 @@
 {
+  "id": "luxvita-app",
+  "name": "LuxVita",
+  "short_name": "LuxVita",
+  "description": "AI-powered nutrition tracking",
   "orientation": "portrait",
-  "background_color": "#ffffff",
-  "theme_color": "#027be3",
+  "background_color": "#F8FAFB",
+  "theme_color": "#1B4F8A",
   "icons": [
     {
       "src": "icons/icon-128x128.png",

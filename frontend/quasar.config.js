@@ -41,6 +41,7 @@ module.exports = configure(function (/* ctx */) {
     ssr: { pwa: false },
     pwa: {
       manifest: {
+        id: 'LuxVita',
         name: 'LuxVita',
         short_name: 'LuxVita',
         display: 'standalone',
